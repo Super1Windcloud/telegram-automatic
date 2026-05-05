@@ -1,0 +1,37 @@
+{
+  "apiId": 123456,
+  "apiHash": "your_api_hash",
+  "phone": "+8619338823723",
+  "password": "",
+  "sessionStorage": "telegram-automatic.session",
+  "privateFolder": {
+    "title": "私聊",
+    "emoji": "🙂"
+  },
+  "groupRules": [
+    {
+      "title": "工作",
+      "emoji": "💼",
+      "patterns": [
+        "work",
+        "项目",
+        "客户",
+        "/^dev/i"
+      ]
+    },
+    {
+      "title": "交易",
+      "emoji": "📈",
+      "patterns": [
+        "币",
+        "quant",
+        "trade",
+        "signal"
+      ]
+    }
+  ],
+  "uncategorizedFolder": {
+    "title": "未分类",
+    "emoji": "📦"
+  }
+}

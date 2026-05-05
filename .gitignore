@@ -1,0 +1,5 @@
+telegram-folders.config.json
+*.session
+*.session-*
+
+node_modules
