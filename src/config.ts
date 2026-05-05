@@ -7,6 +7,7 @@ export const CONFIG_ENV = "TELEGRAM_FOLDER_RULES";
 export const SNAPSHOT_ENV = "TELEGRAM_DIALOG_SNAPSHOT";
 export const CLASSIFIED_ENV = "TELEGRAM_CLASSIFIED_OUTPUT";
 export const UNFILED_ENV = "TELEGRAM_UNFILED_OUTPUT";
+export const FOLDER_STATS_ENV = "TELEGRAM_FOLDER_STATS_OUTPUT";
 
 const DEFAULT_CONFIG_CANDIDATES = ["folder_rules.json", "telegram-folders.config.json"];
 
@@ -20,6 +21,10 @@ export function getClassifiedPath(): string {
 
 export function getUnfiledPath(): string {
   return resolve(process.cwd(), process.env[UNFILED_ENV] ?? "unfiled_dialogs.json");
+}
+
+export function getFolderStatsPath(): string {
+  return resolve(process.cwd(), process.env[FOLDER_STATS_ENV] ?? "folder_stats.json");
 }
 
 export async function resolveConfigPath(): Promise<string> {

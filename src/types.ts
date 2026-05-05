@@ -62,3 +62,29 @@ export type UnfiledDialogsPayload = {
   unfiledCount: number;
   results: DialogRecord[];
 };
+
+export type FolderStat = {
+  type: string;
+  id: number | null;
+  title: string;
+  dialogCount: number;
+  includedPeerCount: number;
+  pinnedPeerCount: number;
+  excludePeerCount: number;
+  flags: {
+    contacts: boolean | null;
+    nonContacts: boolean | null;
+    groups: boolean | null;
+    broadcasts: boolean | null;
+    bots: boolean | null;
+    excludeMuted: boolean | null;
+    excludeRead: boolean | null;
+    excludeArchived: boolean | null;
+  };
+};
+
+export type FolderStatsPayload = {
+  totalFolders: number;
+  totalDialogs: number;
+  results: FolderStat[];
+};

@@ -1,0 +1,196 @@
+{
+  "totalFolders": 10,
+  "totalDialogs": 199,
+  "results": [
+    {
+      "type": "dialogFilterDefault",
+      "id": null,
+      "title": "All",
+      "dialogCount": 199,
+      "includedPeerCount": 0,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": null,
+        "nonContacts": null,
+        "groups": null,
+        "broadcasts": null,
+        "bots": null,
+        "excludeMuted": null,
+        "excludeRead": null,
+        "excludeArchived": null
+      }
+    },
+    {
+      "type": "dialogFilterChatlist",
+      "id": 7,
+      "title": "娱乐",
+      "dialogCount": 5,
+      "includedPeerCount": 5,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": null,
+        "nonContacts": null,
+        "groups": null,
+        "broadcasts": null,
+        "bots": null,
+        "excludeMuted": null,
+        "excludeRead": null,
+        "excludeArchived": null
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 6,
+      "title": "私聊",
+      "dialogCount": 10,
+      "includedPeerCount": 10,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 5,
+      "title": "社群",
+      "dialogCount": 41,
+      "includedPeerCount": 41,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 4,
+      "title": "资讯",
+      "dialogCount": 14,
+      "includedPeerCount": 14,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 3,
+      "title": "机器人",
+      "dialogCount": 19,
+      "includedPeerCount": 24,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 2,
+      "title": "成人",
+      "dialogCount": 57,
+      "includedPeerCount": 60,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 8,
+      "title": "小姐",
+      "dialogCount": 27,
+      "includedPeerCount": 27,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 9,
+      "title": "开户",
+      "dialogCount": 4,
+      "includedPeerCount": 4,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 10,
+      "title": "搜索",
+      "dialogCount": 13,
+      "includedPeerCount": 13,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./src/classifier.js";
-import { getClassifiedPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
+import { getClassifiedPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
+import { collectFolderStats, writeFolderStats } from "./src/folder-stats.js";
 import { applyClassifiedFolders } from "./src/folders.js";
 import { readSnapshot, writeSnapshot } from "./src/snapshot.js";
 import { collectDialogs, createTelegramClient, startTelegramClient } from "./src/telegram.js";
@@ -85,6 +86,23 @@ async function exportUnfiledDialogs(): Promise<void> {
   }
 }
 
+async function exportFolderStats(): Promise<void> {
+  const config = await loadConfig();
+  const outputPath = getFolderStatsPath();
+  const client = createTelegramClient(config);
+
+  try {
+    await startTelegramClient(client, config);
+    const payload = await collectFolderStats(client);
+    await writeFolderStats(outputPath, payload);
+    console.log(`已输出 ${payload.totalFolders} 个文件夹的统计信息到: ${outputPath}`);
+    console.log(`total_folders: ${payload.totalFolders}`);
+    console.log(`total_dialogs: ${payload.totalDialogs}`);
+  } finally {
+    await client.destroy();
+  }
+}
+
 async function runWorkflow(): Promise<void> {
   await exportSnapshot();
   await classifySnapshotFile(true);
@@ -107,11 +125,14 @@ async function main(): Promise<void> {
     case "unfiled":
       await exportUnfiledDialogs();
       return;
+    case "folder-stats":
+      await exportFolderStats();
+      return;
     case "run":
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, run`);
   }
 }
 
