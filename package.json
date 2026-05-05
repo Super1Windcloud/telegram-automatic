@@ -10,7 +10,7 @@
     "snapshot": "tsx index.ts snapshot",
     "classify": "tsx index.ts classify",
     "folders": "tsx index.ts folders",
-    "run": "tsx index.ts run",
+    "start": "tsx index.ts run",
     "sync-folders": "tsx index.ts run",
     "typecheck": "tsc -p tsconfig.json"
   },
