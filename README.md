@@ -1,56 +1,65 @@
 # telegram-automatic
 
-使用 `mtcute` 自动整理 Telegram 文件夹：
+参考 `A:\Pycharm_Project\telegram-auto` 的 TypeScript 版实现，基于 `mtcute` 完成 Telegram 会话工作流：
 
-- 私聊统一放到一个文件夹
-- 群组、频道、超级群合并处理
-- 按会话名称规则自动分类到不同文件夹
+- 导出所有会话到 `dialogs_snapshot.json`
+- 调用 OpenAI 兼容接口做分类
+- 把分类结果写回 Telegram 文件夹
 
-## 1. 准备
+## 配置
 
-从 `my.telegram.org` 获取：
+优先使用 `folder_rules.json`，也兼容当前仓库旧的 `telegram-folders.config.json`。
 
-- `apiId`
-- `apiHash`
-
-复制配置文件：
+推荐先复制 Python 风格配置：
 
 ```powershell
-Copy-Item telegram-folders.config.example.json telegram-folders.config.json
+Copy-Item folder_rules.example.json folder_rules.json
 ```
 
-然后修改 `telegram-folders.config.json`：
+然后填写：
 
-- `phone`：你的 Telegram 手机号
-- `password`：如果开了两步验证就填
-- `privateFolder`：私聊目标文件夹
-- `groupRules`：群组/频道/超级群的名称匹配规则
-- `uncategorizedFolder`：可选，未命中的群会进入这里
+- `api_id`
+- `api_hash`
+- `phone`
+- `session_name`
+- `dry_run`
+- `openai.base_url`
+- `openai.api_key`
+- `openai.model`
+- `openai.batch_size`
+- `rules`
 
-`patterns` 支持两种写法：
+也支持环境变量：
 
-- 普通包含匹配，例如 `"项目"`
-- 正则表达式字符串，例如 `"/^dev/i"`
+- `TELEGRAM_FOLDER_RULES`
+- `TELEGRAM_DIALOG_SNAPSHOT`
+- `TELEGRAM_CLASSIFIED_OUTPUT`
+- `OPENAI_BASE_URL`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `OPENAI_API_STYLE`
 
-## 2. 运行
+## 命令
 
 ```powershell
-npm run sync-folders
+npm run snapshot
+npm run classify
+npm run folders
+npm run run
 ```
 
-首次运行会要求输入登录验证码，并在当前目录生成 session 数据库。
+其中：
 
-## 3. 规则说明
+- `snapshot` 导出会话快照
+- `classify` 读取快照并输出 `classified_dialogs.json`
+- `folders` 根据分类结果重建 Telegram 文件夹
+- `run` 执行完整流程，且已有分类结果时会跳过重复分类
 
-实现逻辑：
+`npm run sync-folders` 仍然保留，等同于 `npm run run`。
 
-- `peer.type === "user"` 的会话全部进入私聊文件夹
-- `peer.type !== "user"` 的会话视为群/频道类会话
-- 群/频道类会话按 `groupRules` 从上到下匹配，命中第一条规则后停止
-- 没有命中时，若配置了 `uncategorizedFolder`，则放入该文件夹
+## 说明
 
-## 4. 注意
-
-- Telegram 文件夹标题有长度限制，建议控制在较短范围内
-- 此脚本会覆盖它管理的这些文件夹里的 `includePeers` 内容
-- 如果你手动往同名文件夹里加聊天，下次运行会被脚本结果覆盖
+- 私聊和机器人会优先按类型直接归组
+- 群组和频道会走 OpenAI 分类
+- 当接口返回不可解析内容时，会降级到本地规则分类
+- 写入文件夹前会清空现有自定义文件夹，行为与参考 Python 项目一致

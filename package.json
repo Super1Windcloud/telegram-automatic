@@ -2,12 +2,16 @@
   "name": "telegram-automatic",
   "version": "1.0.0",
   "description": "",
-  "license": "ISC",
-  "author": "",
+  "license": "MIT",
+  "author": "superwindcloud",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "sync-folders": "tsx src/index.ts",
+    "snapshot": "tsx src/index.ts snapshot",
+    "classify": "tsx src/index.ts classify",
+    "folders": "tsx src/index.ts folders",
+    "run": "tsx src/index.ts run",
+    "sync-folders": "tsx src/index.ts run",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {

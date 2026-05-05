@@ -1,0 +1,33 @@
+{
+  "api_id": 123456,
+  "api_hash": "your_api_hash",
+  "phone": "+8613800000000",
+  "session_name": "telegram-auto",
+  "dry_run": false,
+  "openai": {
+    "base_url": "https://api.openai.com/v1",
+    "api_key": "sk-xxxx",
+    "model": "gpt-5.4",
+    "batch_size": 50,
+    "api_style": "auto",
+    "max_retries": 3,
+    "retry_delay_seconds": 2
+  },
+  "rules": [
+    {
+      "folder": "工作",
+      "patterns": ["工作", "项目", "client", "team"],
+      "types": ["private", "group", "supergroup", "channel"]
+    },
+    {
+      "folder": "资讯",
+      "patterns": ["news", "日报", "资讯", "公告"],
+      "types": ["channel", "supergroup"]
+    },
+    {
+      "folder": "机器人",
+      "patterns": [".*bot$", "助手", "提醒"],
+      "types": ["bot"]
+    }
+  ]
+}
