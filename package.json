@@ -7,11 +7,11 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "snapshot": "tsx src/index.ts snapshot",
-    "classify": "tsx src/index.ts classify",
-    "folders": "tsx src/index.ts folders",
-    "run": "tsx src/index.ts run",
-    "sync-folders": "tsx src/index.ts run",
+    "snapshot": "tsx index.ts snapshot",
+    "classify": "tsx index.ts classify",
+    "folders": "tsx index.ts folders",
+    "run": "tsx index.ts run",
+    "sync-folders": "tsx index.ts run",
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {

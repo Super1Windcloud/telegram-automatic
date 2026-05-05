@@ -1,8 +1,8 @@
-import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./classifier.js";
-import { getClassifiedPath, getSnapshotPath, loadConfig, resolveConfigPath } from "./config.js";
-import { applyClassifiedFolders } from "./folders.js";
-import { readSnapshot, writeSnapshot } from "./snapshot.js";
-import { collectDialogs, createTelegramClient, startTelegramClient } from "./telegram.js";
+import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./src/classifier.js";
+import { getClassifiedPath, getSnapshotPath, loadConfig, resolveConfigPath } from "./src/config.js";
+import { applyClassifiedFolders } from "./src/folders.js";
+import { readSnapshot, writeSnapshot } from "./src/snapshot.js";
+import { collectDialogs, createTelegramClient, startTelegramClient } from "./src/telegram.js";
 
 async function exportSnapshot(): Promise<void> {
   const config = await loadConfig();
