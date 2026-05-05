@@ -6,9 +6,9 @@ node_modules
 
 telegram-auto.session
 folder_rules.json
-dialogs_snapshot.json
+# dialogs_snapshot.json
 __pycache__
 *.session
-classified_dialogs.json
+# classified_dialogs.json
 .idea
 telegram-auto
