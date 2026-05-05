@@ -6,6 +6,7 @@ import type { AppConfig, OpenAiConfig, RuleConfig, RuleType } from "./types.js";
 export const CONFIG_ENV = "TELEGRAM_FOLDER_RULES";
 export const SNAPSHOT_ENV = "TELEGRAM_DIALOG_SNAPSHOT";
 export const CLASSIFIED_ENV = "TELEGRAM_CLASSIFIED_OUTPUT";
+export const UNFILED_ENV = "TELEGRAM_UNFILED_OUTPUT";
 
 const DEFAULT_CONFIG_CANDIDATES = ["folder_rules.json", "telegram-folders.config.json"];
 
@@ -15,6 +16,10 @@ export function getSnapshotPath(): string {
 
 export function getClassifiedPath(): string {
   return resolve(process.cwd(), process.env[CLASSIFIED_ENV] ?? "classified_dialogs.json");
+}
+
+export function getUnfiledPath(): string {
+  return resolve(process.cwd(), process.env[UNFILED_ENV] ?? "unfiled_dialogs.json");
 }
 
 export async function resolveConfigPath(): Promise<string> {

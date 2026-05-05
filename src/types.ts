@@ -54,3 +54,11 @@ export type ClassificationPayload = {
   groups: Record<string, ClassifiedResult[]>;
   results: ClassifiedResult[];
 };
+
+export type UnfiledDialogsPayload = {
+  totalDialogs: number;
+  customFolderCount: number;
+  customFolderTitles: string[];
+  unfiledCount: number;
+  results: DialogRecord[];
+};

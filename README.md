@@ -7,6 +7,7 @@ Utilities for exporting Telegram dialogs, classifying them with an OpenAI-compat
 - Export all dialogs to `dialogs_snapshot.json`
 - Classify dialogs through an OpenAI-compatible API
 - Rebuild Telegram folders from `classified_dialogs.json`
+- Export dialogs that are not in any custom Telegram folder
 - Fall back to local rules when model output cannot be parsed
 - Support both a full workflow run and step-by-step commands
 
@@ -39,6 +40,7 @@ Supported environment variables:
 - `TELEGRAM_FOLDER_RULES`
 - `TELEGRAM_DIALOG_SNAPSHOT`
 - `TELEGRAM_CLASSIFIED_OUTPUT`
+- `TELEGRAM_UNFILED_OUTPUT`
 - `OPENAI_BASE_URL`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
@@ -50,6 +52,7 @@ Supported environment variables:
 npm run snapshot
 npm run classify
 npm run folders
+npm run unfiled
 npm run run
 ```
 
@@ -58,6 +61,7 @@ Command summary:
 - `snapshot`: export dialogs to `dialogs_snapshot.json`
 - `classify`: read the snapshot and write `classified_dialogs.json`
 - `folders`: rebuild Telegram folders from the classified output
+- `unfiled`: export dialogs that are not included in any current custom Telegram folder
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.

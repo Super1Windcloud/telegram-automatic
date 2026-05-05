@@ -1,8 +1,9 @@
 import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./src/classifier.js";
-import { getClassifiedPath, getSnapshotPath, loadConfig, resolveConfigPath } from "./src/config.js";
+import { getClassifiedPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
 import { applyClassifiedFolders } from "./src/folders.js";
 import { readSnapshot, writeSnapshot } from "./src/snapshot.js";
 import { collectDialogs, createTelegramClient, startTelegramClient } from "./src/telegram.js";
+import { collectUnfiledDialogs, writeUnfiledDialogs } from "./src/unfiled.js";
 
 async function exportSnapshot(): Promise<void> {
   const config = await loadConfig();
@@ -66,6 +67,24 @@ async function applyFolders(): Promise<void> {
   }
 }
 
+async function exportUnfiledDialogs(): Promise<void> {
+  const config = await loadConfig();
+  const outputPath = getUnfiledPath();
+  const client = createTelegramClient(config);
+
+  try {
+    await startTelegramClient(client, config);
+    const dialogs = await collectDialogs(client);
+    const payload = await collectUnfiledDialogs(client, dialogs);
+    await writeUnfiledDialogs(outputPath, payload);
+    console.log(`已输出 ${payload.unfiledCount} 个未归属任何自定义文件夹的会话到: ${outputPath}`);
+    console.log(`total_dialogs: ${payload.totalDialogs}`);
+    console.log(`custom_folder_count: ${payload.customFolderCount}`);
+  } finally {
+    await client.destroy();
+  }
+}
+
 async function runWorkflow(): Promise<void> {
   await exportSnapshot();
   await classifySnapshotFile(true);
@@ -85,11 +104,14 @@ async function main(): Promise<void> {
     case "folders":
       await applyFolders();
       return;
+    case "unfiled":
+      await exportUnfiledDialogs();
+      return;
     case "run":
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, run`);
   }
 }
 
