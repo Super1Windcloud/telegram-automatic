@@ -12,3 +12,8 @@ __pycache__
 # classified_dialogs.json
 .idea
 telegram-auto
+
+classified_dialogs.json
+dialogs_snapshot.json
+unfiltered_dialogs.json
+
