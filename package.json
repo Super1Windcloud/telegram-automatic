@@ -11,7 +11,7 @@
     "classify": "tsx index.ts classify",
     "folders": "tsx index.ts folders",
     "unfiled": "tsx index.ts unfiled",
-    "folder-stats": "tsx index.ts folder-stats",
+    "stats": "tsx index.ts folder-stats",
     "start": "tsx index.ts run",
     "sync-folders": "tsx index.ts run",
     "typecheck": "tsc -p tsconfig.json"

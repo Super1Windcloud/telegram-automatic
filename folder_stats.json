@@ -1,12 +1,14 @@
 {
-  "totalFolders": 10,
-  "totalDialogs": 199,
+  "totalFolders": 11,
+  "totalDialogs": 223,
+  "customFolderFiledDialogsUniqueCount": 208,
+  "unfiledDialogsCount": 15,
   "results": [
     {
       "type": "dialogFilterDefault",
       "id": null,
       "title": "All",
-      "dialogCount": 199,
+      "dialogCount": 223,
       "includedPeerCount": 0,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
@@ -24,9 +26,9 @@
     {
       "type": "dialogFilterChatlist",
       "id": 7,
-      "title": "娱乐",
-      "dialogCount": 5,
-      "includedPeerCount": 5,
+      "title": "吃瓜",
+      "dialogCount": 8,
+      "includedPeerCount": 8,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -44,8 +46,8 @@
       "type": "dialogFilter",
       "id": 6,
       "title": "私聊",
-      "dialogCount": 10,
-      "includedPeerCount": 10,
+      "dialogCount": 16,
+      "includedPeerCount": 16,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -63,9 +65,9 @@
       "type": "dialogFilter",
       "id": 5,
       "title": "社群",
-      "dialogCount": 41,
-      "includedPeerCount": 41,
-      "pinnedPeerCount": 0,
+      "dialogCount": 12,
+      "includedPeerCount": 12,
+      "pinnedPeerCount": 1,
       "excludePeerCount": 0,
       "flags": {
         "contacts": false,
@@ -82,27 +84,8 @@
       "type": "dialogFilter",
       "id": 4,
       "title": "资讯",
-      "dialogCount": 14,
-      "includedPeerCount": 14,
-      "pinnedPeerCount": 0,
-      "excludePeerCount": 0,
-      "flags": {
-        "contacts": false,
-        "nonContacts": false,
-        "groups": false,
-        "broadcasts": false,
-        "bots": false,
-        "excludeMuted": false,
-        "excludeRead": false,
-        "excludeArchived": false
-      }
-    },
-    {
-      "type": "dialogFilter",
-      "id": 3,
-      "title": "机器人",
-      "dialogCount": 19,
-      "includedPeerCount": 24,
+      "dialogCount": 13,
+      "includedPeerCount": 13,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -139,8 +122,8 @@
       "type": "dialogFilter",
       "id": 8,
       "title": "小姐",
-      "dialogCount": 27,
-      "includedPeerCount": 27,
+      "dialogCount": 47,
+      "includedPeerCount": 47,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -158,8 +141,8 @@
       "type": "dialogFilter",
       "id": 9,
       "title": "开户",
-      "dialogCount": 4,
-      "includedPeerCount": 4,
+      "dialogCount": 9,
+      "includedPeerCount": 9,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -179,6 +162,44 @@
       "title": "搜索",
       "dialogCount": 13,
       "includedPeerCount": 13,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 11,
+      "title": "兼职",
+      "dialogCount": 14,
+      "includedPeerCount": 15,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 3,
+      "title": "机器人",
+      "dialogCount": 20,
+      "includedPeerCount": 25,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {

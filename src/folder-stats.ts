@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
-import type { TelegramClient, tl } from "@mtcute/node";
-import { inputPeerKey } from "./telegram.js";
+import type { tl } from "@mtcute/node";
+import { Dialog } from "@mtcute/node";
+import { inputPeerKey, type CollectedDialog } from "./telegram.js";
 import type { FolderStat, FolderStatsPayload } from "./types.js";
 
 function titleText(filter: tl.TypeDialogFilter): string {
@@ -69,30 +70,25 @@ function peerListCount(filter: tl.TypeDialogFilter, field: "includePeers" | "pin
   return 0;
 }
 
-async function collectDialogPeerKeysInFolder(client: TelegramClient, folder: tl.TypeDialogFilter): Promise<Set<string>> {
+function collectDialogPeerKeysInFolder(dialogs: CollectedDialog[], folder: tl.TypeDialogFilter): Set<string> {
   const peerKeys = new Set<string>();
-  const params = folder._ === "dialogFilterDefault"
-    ? { pinned: "keep" as const, archived: "keep" as const }
-    : { folder: folder as tl.RawDialogFilter, pinned: "keep" as const, archived: "keep" as const };
+  const matchesFolder = Dialog.filterFolder(folder, false);
 
-  for await (const dialog of client.iterDialogs(params)) {
-    const peer = dialog.peer.inputPeer;
-    if (peer._ === "inputPeerEmpty") {
-      continue;
+  for (const item of dialogs) {
+    if (matchesFolder(item.dialog)) {
+      peerKeys.add(inputPeerKey(item.info.inputPeer));
     }
-    peerKeys.add(inputPeerKey(peer));
   }
 
   return peerKeys;
 }
 
-export async function collectFolderStats(client: TelegramClient): Promise<FolderStatsPayload> {
-  const response = await client.getFolders();
+export function collectFolderStats(dialogs: CollectedDialog[], folders: tl.TypeDialogFilter[]): FolderStatsPayload {
   const results: FolderStat[] = [];
   const customFolderPeerKeys = new Set<string>();
 
-  for (const folder of response.filters) {
-    const dialogPeerKeys = await collectDialogPeerKeysInFolder(client, folder);
+  for (const folder of folders) {
+    const dialogPeerKeys = collectDialogPeerKeysInFolder(dialogs, folder);
     results.push({
       type: folder._,
       id: folderId(folder),
@@ -114,7 +110,7 @@ export async function collectFolderStats(client: TelegramClient): Promise<Folder
   const totalDialogs = results.find((item) => item.type === "dialogFilterDefault")?.dialogCount ?? 0;
 
   return {
-    totalFolders: results.length,
+    totalFolders: folders.length,
     totalDialogs,
     customFolderFiledDialogsUniqueCount: customFolderPeerKeys.size,
     unfiledDialogsCount: Math.max(totalDialogs - customFolderPeerKeys.size, 0),

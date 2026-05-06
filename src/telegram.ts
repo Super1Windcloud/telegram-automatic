@@ -1,6 +1,11 @@
 import { TelegramClient, type Dialog, type Peer, type tl } from "@mtcute/node";
 import type { AppConfig, DialogInfo, RuleType } from "./types.js";
 
+export type CollectedDialog = {
+  dialog: Dialog;
+  info: DialogInfo;
+};
+
 function buildDialogTypes(peer: Peer): RuleType[] {
   if (peer.type === "user") {
     return peer.isBot ? ["private", "bot"] : ["private"];
@@ -36,6 +41,7 @@ export function createTelegramClient(config: AppConfig): TelegramClient {
     apiId: config.apiId,
     apiHash: config.apiHash,
     storage: config.sessionName,
+    disableUpdates: true,
   });
 }
 
@@ -55,7 +61,12 @@ export async function startTelegramClient(client: TelegramClient, config: AppCon
 }
 
 export async function collectDialogs(client: TelegramClient): Promise<DialogInfo[]> {
-  const dialogs: DialogInfo[] = [];
+  const collected = await collectDialogsWithState(client);
+  return collected.map((item) => item.info);
+}
+
+export async function collectDialogsWithState(client: TelegramClient): Promise<CollectedDialog[]> {
+  const dialogs: CollectedDialog[] = [];
 
   for await (const dialog of client.iterDialogs({ pinned: "keep", archived: "keep" })) {
     const peer = dialog.peer;
@@ -66,18 +77,21 @@ export async function collectDialogs(client: TelegramClient): Promise<DialogInfo
 
     const types = buildDialogTypes(peer);
     dialogs.push({
-      id: peer.id,
-      title: peer.displayName,
-      username: peer.username,
-      types,
-      description: buildDialogDescription(dialog, peer, types),
-      inputPeer,
+      dialog,
+      info: {
+        id: peer.id,
+        title: peer.displayName,
+        username: peer.username,
+        types,
+        description: buildDialogDescription(dialog, peer, types),
+        inputPeer,
+      },
     });
   }
 
   return dialogs.sort((left, right) => {
-    const byTitle = left.title.localeCompare(right.title, "zh-CN");
-    return byTitle !== 0 ? byTitle : left.id - right.id;
+    const byTitle = left.info.title.localeCompare(right.info.title, "zh-CN");
+    return byTitle !== 0 ? byTitle : left.info.id - right.info.id;
   });
 }
 

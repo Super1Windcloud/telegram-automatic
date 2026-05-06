@@ -1,7 +1,8 @@
 import { writeFile } from "node:fs/promises";
-import type { TelegramClient, tl } from "@mtcute/node";
-import { inputPeerKey } from "./telegram.js";
-import type { DialogInfo, UnfiledDialogsPayload } from "./types.js";
+import type { tl } from "@mtcute/node";
+import { Dialog } from "@mtcute/node";
+import { inputPeerKey, type CollectedDialog } from "./telegram.js";
+import type { UnfiledDialogsPayload } from "./types.js";
 
 function titleText(filter: tl.TypeDialogFilter): string {
   if ("title" in filter && filter.title && typeof filter.title === "object" && "text" in filter.title) {
@@ -14,45 +15,39 @@ function isCustomFolder(filter: tl.TypeDialogFilter): filter is tl.RawDialogFilt
   return filter._ === "dialogFilter" || filter._ === "dialogFilterChatlist";
 }
 
-async function collectFiledPeerKeys(
-  client: TelegramClient,
+function collectFiledPeerKeys(
+  dialogs: CollectedDialog[],
   folders: Array<tl.RawDialogFilter | tl.RawDialogFilterChatlist>,
-): Promise<Set<string>> {
+): Set<string> {
   const filedPeerKeys = new Set<string>();
 
   for (const folder of folders) {
-    for await (const dialog of client.iterDialogs({
-      folder: folder as unknown as tl.RawDialogFilter,
-      pinned: "keep",
-      archived: "keep",
-    })) {
-      const peer = dialog.peer.inputPeer;
-      if (peer._ === "inputPeerEmpty") {
-        continue;
+    const matchesFolder = Dialog.filterFolder(folder, false);
+    for (const item of dialogs) {
+      if (matchesFolder(item.dialog)) {
+        filedPeerKeys.add(inputPeerKey(item.info.inputPeer));
       }
-      filedPeerKeys.add(inputPeerKey(peer));
     }
   }
 
   return filedPeerKeys;
 }
 
-export async function collectUnfiledDialogs(
-  client: TelegramClient,
-  dialogs: DialogInfo[],
-): Promise<UnfiledDialogsPayload> {
-  const response = await client.getFolders();
-  const folders = response.filters.filter(isCustomFolder);
-  const filedPeerKeys = await collectFiledPeerKeys(client, folders);
+export function collectUnfiledDialogs(
+  dialogs: CollectedDialog[],
+  folders: tl.TypeDialogFilter[],
+): UnfiledDialogsPayload {
+  const customFolders = folders.filter(isCustomFolder);
+  const filedPeerKeys = collectFiledPeerKeys(dialogs, customFolders);
 
   const results = dialogs
-    .filter((dialog) => !filedPeerKeys.has(inputPeerKey(dialog.inputPeer)))
-    .map(({ inputPeer: _inputPeer, ...dialog }) => dialog);
+    .filter((item) => !filedPeerKeys.has(inputPeerKey(item.info.inputPeer)))
+    .map(({ info: { inputPeer: _inputPeer, ...dialog } }) => dialog);
 
   return {
     totalDialogs: dialogs.length,
-    customFolderCount: folders.length,
-    customFolderTitles: folders.map((folder) => titleText(folder) || `id=${folder.id}`),
+    customFolderCount: customFolders.length,
+    customFolderTitles: customFolders.map((folder) => titleText(folder) || `id=${folder.id}`),
     unfiledCount: results.length,
     results,
   };

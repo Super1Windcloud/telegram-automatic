@@ -3,7 +3,7 @@ import { getClassifiedPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath,
 import { collectFolderStats, writeFolderStats } from "./src/folder-stats.js";
 import { applyClassifiedFolders } from "./src/folders.js";
 import { readSnapshot, writeSnapshot } from "./src/snapshot.js";
-import { collectDialogs, createTelegramClient, startTelegramClient } from "./src/telegram.js";
+import { collectDialogs, collectDialogsWithState, createTelegramClient, startTelegramClient } from "./src/telegram.js";
 import { collectUnfiledDialogs, writeUnfiledDialogs } from "./src/unfiled.js";
 
 async function exportSnapshot(): Promise<void> {
@@ -75,8 +75,9 @@ async function exportUnfiledDialogs(): Promise<void> {
 
   try {
     await startTelegramClient(client, config);
-    const dialogs = await collectDialogs(client);
-    const payload = await collectUnfiledDialogs(client, dialogs);
+    const folders = (await client.getFolders()).filters;
+    const dialogs = await collectDialogsWithState(client);
+    const payload = collectUnfiledDialogs(dialogs, folders);
     await writeUnfiledDialogs(outputPath, payload);
     console.log(`已输出 ${payload.unfiledCount} 个未归属任何自定义文件夹的会话到: ${outputPath}`);
     console.log(`total_dialogs: ${payload.totalDialogs}`);
@@ -93,7 +94,9 @@ async function exportFolderStats(): Promise<void> {
 
   try {
     await startTelegramClient(client, config);
-    const payload = await collectFolderStats(client);
+    const folders = (await client.getFolders()).filters;
+    const dialogs = await collectDialogsWithState(client);
+    const payload = collectFolderStats(dialogs, folders);
     await writeFolderStats(outputPath, payload);
     console.log(`已输出 ${payload.totalFolders} 个文件夹的统计信息到: ${outputPath}`);
     console.log(`total_folders: ${payload.totalFolders}`);
