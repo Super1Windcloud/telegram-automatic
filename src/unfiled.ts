@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import type { tl } from "@mtcute/node";
-import { Dialog } from "@mtcute/node";
 import { inputPeerKey, type CollectedDialog } from "./telegram.js";
+import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
 import type { UnfiledDialogsPayload } from "./types.js";
 
 function titleText(filter: tl.TypeDialogFilter): string {
@@ -22,11 +22,8 @@ function collectFiledPeerKeys(
   const filedPeerKeys = new Set<string>();
 
   for (const folder of folders) {
-    const matchesFolder = Dialog.filterFolder(folder, false);
-    for (const item of dialogs) {
-      if (matchesFolder(item.dialog)) {
-        filedPeerKeys.add(inputPeerKey(item.info.inputPeer));
-      }
+    for (const peerKey of collectDialogPeerKeysInCustomFolder(dialogs, folder)) {
+      filedPeerKeys.add(peerKey);
     }
   }
 

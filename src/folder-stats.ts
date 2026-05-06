@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import type { tl } from "@mtcute/node";
-import { Dialog } from "@mtcute/node";
-import { inputPeerKey, type CollectedDialog } from "./telegram.js";
+import { type CollectedDialog } from "./telegram.js";
+import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
 import type { FolderStat, FolderStatsPayload } from "./types.js";
 
 function titleText(filter: tl.TypeDialogFilter): string {
@@ -70,25 +70,14 @@ function peerListCount(filter: tl.TypeDialogFilter, field: "includePeers" | "pin
   return 0;
 }
 
-function collectDialogPeerKeysInFolder(dialogs: CollectedDialog[], folder: tl.TypeDialogFilter): Set<string> {
-  const peerKeys = new Set<string>();
-  const matchesFolder = Dialog.filterFolder(folder, false);
-
-  for (const item of dialogs) {
-    if (matchesFolder(item.dialog)) {
-      peerKeys.add(inputPeerKey(item.info.inputPeer));
-    }
-  }
-
-  return peerKeys;
-}
-
 export function collectFolderStats(dialogs: CollectedDialog[], folders: tl.TypeDialogFilter[]): FolderStatsPayload {
   const results: FolderStat[] = [];
   const customFolderPeerKeys = new Set<string>();
 
   for (const folder of folders) {
-    const dialogPeerKeys = collectDialogPeerKeysInFolder(dialogs, folder);
+    const dialogPeerKeys = folder._ === "dialogFilter" || folder._ === "dialogFilterChatlist"
+      ? collectDialogPeerKeysInCustomFolder(dialogs, folder)
+      : new Set<string>();
     results.push({
       type: folder._,
       id: folderId(folder),
@@ -104,6 +93,11 @@ export function collectFolderStats(dialogs: CollectedDialog[], folders: tl.TypeD
       for (const peerKey of dialogPeerKeys) {
         customFolderPeerKeys.add(peerKey);
       }
+      continue;
+    }
+
+    if (folder._ === "dialogFilterDefault") {
+      results[results.length - 1].dialogCount = dialogs.length;
     }
   }
 

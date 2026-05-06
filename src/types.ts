@@ -36,6 +36,12 @@ export type DialogRecord = {
   username: string | null;
   types: RuleType[];
   description: string;
+  entityKind?: "user" | "bot" | "group" | "supergroup" | "channel" | "unknown";
+  peerType?: string;
+  chatType?: string | null;
+  inputPeerType?: string;
+  hasPublicUsername?: boolean;
+  normalizedId?: number;
 };
 
 export type DialogInfo = DialogRecord & {

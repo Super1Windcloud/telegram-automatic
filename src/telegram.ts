@@ -6,6 +6,29 @@ export type CollectedDialog = {
   info: DialogInfo;
 };
 
+function getEntityKind(peer: Peer): DialogInfo["entityKind"] {
+  if (peer.type === "user") {
+    return peer.isBot ? "bot" : "user";
+  }
+
+  switch (peer.chatType) {
+    case "group":
+      return "group";
+    case "supergroup":
+    case "gigagroup":
+    case "monoforum":
+      return "supergroup";
+    case "channel":
+      return "channel";
+    default:
+      return "unknown";
+  }
+}
+
+function getNormalizedId(peer: Peer): number {
+  return Math.abs(peer.id);
+}
+
 function buildDialogTypes(peer: Peer): RuleType[] {
   if (peer.type === "user") {
     return peer.isBot ? ["private", "bot"] : ["private"];
@@ -84,6 +107,12 @@ export async function collectDialogsWithState(client: TelegramClient): Promise<C
         username: peer.username,
         types,
         description: buildDialogDescription(dialog, peer, types),
+        entityKind: getEntityKind(peer),
+        peerType: peer.type,
+        chatType: "chatType" in peer ? peer.chatType : null,
+        inputPeerType: inputPeer._,
+        hasPublicUsername: Boolean(peer.username),
+        normalizedId: getNormalizedId(peer),
         inputPeer,
       },
     });

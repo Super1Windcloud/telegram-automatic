@@ -72,6 +72,8 @@ Command summary:
 
 ## Notes
 
+- Exported dialog records now also include diagnostic fields such as `entityKind`, `peerType`, `chatType`, `inputPeerType`, `hasPublicUsername`, and `normalizedId`
+- Dialogs pinned inside a custom Telegram folder are treated as filed, even when Telegram returns them only via that folder's `pinnedPeers`
 - Private chats and bots are grouped by type before model classification
 - Groups and channels are sent to the configured API for categorization
 - Existing custom Telegram folders are cleared before new folders are created
