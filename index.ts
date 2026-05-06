@@ -1,3 +1,4 @@
+import { archiveFolderByTitle } from "./src/archive-folder.js";
 import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./src/classifier.js";
 import { getClassifiedPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
 import { collectFolderStats, writeFolderStats } from "./src/folder-stats.js";
@@ -106,6 +107,19 @@ async function exportFolderStats(): Promise<void> {
   }
 }
 
+async function archiveAirportFolder(): Promise<void> {
+  const config = await loadConfig();
+  const client = createTelegramClient(config);
+
+  try {
+    await startTelegramClient(client, config);
+    const dialogs = await collectDialogsWithState(client);
+    await archiveFolderByTitle(client, dialogs, "机场", config.dryRun);
+  } finally {
+    await client.destroy();
+  }
+}
+
 async function runWorkflow(): Promise<void> {
   await exportSnapshot();
   await classifySnapshotFile(true);
@@ -131,11 +145,14 @@ async function main(): Promise<void> {
     case "folder-stats":
       await exportFolderStats();
       return;
+    case "archive-airport":
+      await archiveAirportFolder();
+      return;
     case "run":
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, archive-airport, run`);
   }
 }
 

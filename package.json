@@ -12,6 +12,7 @@
     "folders": "tsx index.ts folders",
     "unfiled": "tsx index.ts unfiled",
     "stats": "tsx index.ts folder-stats",
+    "archive-airport": "tsx index.ts archive-airport",
     "start": "tsx index.ts run",
     "sync-folders": "tsx index.ts run",
     "typecheck": "tsc -p tsconfig.json"
