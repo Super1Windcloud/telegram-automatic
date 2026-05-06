@@ -10,8 +10,8 @@ function titleText(filter: tl.TypeDialogFilter): string {
   return "";
 }
 
-function isEditableFolder(filter: tl.TypeDialogFilter): filter is tl.RawDialogFilter {
-  return filter._ === "dialogFilter";
+function isCustomFolder(filter: tl.TypeDialogFilter): filter is tl.RawDialogFilter | tl.RawDialogFilterChatlist {
+  return filter._ === "dialogFilter" || filter._ === "dialogFilterChatlist";
 }
 
 export async function collectUnfiledDialogs(
@@ -19,7 +19,7 @@ export async function collectUnfiledDialogs(
   dialogs: DialogInfo[],
 ): Promise<UnfiledDialogsPayload> {
   const response = await client.getFolders();
-  const folders = response.filters.filter(isEditableFolder);
+  const folders = response.filters.filter(isCustomFolder);
   const includedPeers = new Set<string>();
 
   for (const folder of folders) {
