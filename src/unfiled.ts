@@ -14,25 +14,39 @@ function isCustomFolder(filter: tl.TypeDialogFilter): filter is tl.RawDialogFilt
   return filter._ === "dialogFilter" || filter._ === "dialogFilterChatlist";
 }
 
+async function collectFiledPeerKeys(
+  client: TelegramClient,
+  folders: Array<tl.RawDialogFilter | tl.RawDialogFilterChatlist>,
+): Promise<Set<string>> {
+  const filedPeerKeys = new Set<string>();
+
+  for (const folder of folders) {
+    for await (const dialog of client.iterDialogs({
+      folder: folder as unknown as tl.RawDialogFilter,
+      pinned: "keep",
+      archived: "keep",
+    })) {
+      const peer = dialog.peer.inputPeer;
+      if (peer._ === "inputPeerEmpty") {
+        continue;
+      }
+      filedPeerKeys.add(inputPeerKey(peer));
+    }
+  }
+
+  return filedPeerKeys;
+}
+
 export async function collectUnfiledDialogs(
   client: TelegramClient,
   dialogs: DialogInfo[],
 ): Promise<UnfiledDialogsPayload> {
   const response = await client.getFolders();
   const folders = response.filters.filter(isCustomFolder);
-  const includedPeers = new Set<string>();
-
-  for (const folder of folders) {
-    for (const peer of folder.includePeers) {
-      if (peer._ === "inputPeerEmpty") {
-        continue;
-      }
-      includedPeers.add(inputPeerKey(peer));
-    }
-  }
+  const filedPeerKeys = await collectFiledPeerKeys(client, folders);
 
   const results = dialogs
-    .filter((dialog) => !includedPeers.has(inputPeerKey(dialog.inputPeer)))
+    .filter((dialog) => !filedPeerKeys.has(inputPeerKey(dialog.inputPeer)))
     .map(({ inputPeer: _inputPeer, ...dialog }) => dialog);
 
   return {

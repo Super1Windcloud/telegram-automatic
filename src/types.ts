@@ -86,5 +86,7 @@ export type FolderStat = {
 export type FolderStatsPayload = {
   totalFolders: number;
   totalDialogs: number;
+  customFolderFiledDialogsUniqueCount: number;
+  unfiledDialogsCount: number;
   results: FolderStat[];
 };
