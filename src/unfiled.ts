@@ -4,6 +4,8 @@ import { inputPeerKey, type CollectedDialog } from "./telegram.js";
 import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
 import type { UnfiledDialogsPayload } from "./types.js";
 
+const EXCLUDED_TITLES = new Set(["demo", "superwindcloud"]);
+
 function titleText(filter: tl.TypeDialogFilter): string {
   if ("title" in filter && filter.title && typeof filter.title === "object" && "text" in filter.title) {
     return filter.title.text;
@@ -38,6 +40,7 @@ export function collectUnfiledDialogs(
   const filedPeerKeys = collectFiledPeerKeys(dialogs, customFolders);
 
   const results = dialogs
+    .filter((item) => !EXCLUDED_TITLES.has(item.info.title))
     .filter((item) => !filedPeerKeys.has(inputPeerKey(item.info.inputPeer)))
     .map(({ info: { inputPeer: _inputPeer, ...dialog } }) => dialog);
 
