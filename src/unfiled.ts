@@ -36,16 +36,17 @@ export function collectUnfiledDialogs(
   dialogs: CollectedDialog[],
   folders: tl.TypeDialogFilter[],
 ): UnfiledDialogsPayload {
+  const activeDialogs = dialogs.filter((item) => !item.dialog.isArchived);
   const customFolders = folders.filter(isCustomFolder);
-  const filedPeerKeys = collectFiledPeerKeys(dialogs, customFolders);
+  const filedPeerKeys = collectFiledPeerKeys(activeDialogs, customFolders);
 
-  const results = dialogs
+  const results = activeDialogs
     .filter((item) => !EXCLUDED_TITLES.has(item.info.title))
     .filter((item) => !filedPeerKeys.has(inputPeerKey(item.info.inputPeer)))
     .map(({ info: { inputPeer: _inputPeer, ...dialog } }) => dialog);
 
   return {
-    totalDialogs: dialogs.length,
+    totalDialogs: activeDialogs.length,
     customFolderCount: customFolders.length,
     customFolderTitles: customFolders.map((folder) => titleText(folder) || `id=${folder.id}`),
     unfiledCount: results.length,
