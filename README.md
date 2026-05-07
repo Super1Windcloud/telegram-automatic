@@ -57,6 +57,7 @@ npm run folders
 npm run unfiled
 npm run folder-stats
 npm run archive-airport
+npm run sync-private-folder
 npm run run
 ```
 
@@ -68,6 +69,7 @@ Command summary:
 - `unfiled`: export dialogs that are not included in any current custom Telegram folder
 - `folder-stats`: export all current Telegram folder stats to `folder_stats.json`
 - `archive-airport`: prompt for a custom Telegram folder name, then archive all dialogs currently included in that folder
+- `sync-private-folder`: add unarchived private user dialogs that are not in any custom folder into the `私聊` folder
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.

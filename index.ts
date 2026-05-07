@@ -3,6 +3,7 @@ import { classificationExists, classifySnapshot, readClassification, writeClassi
 import { getClassifiedPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
 import { collectFolderStats, writeFolderStats } from "./src/folder-stats.js";
 import { applyClassifiedFolders } from "./src/folders.js";
+import { syncPrivateDialogsToFolder } from "./src/private-folder.js";
 import { readSnapshot, writeSnapshot } from "./src/snapshot.js";
 import { collectDialogs, collectDialogsWithState, createTelegramClient, startTelegramClient } from "./src/telegram.js";
 import { collectUnfiledDialogs, writeUnfiledDialogs } from "./src/unfiled.js";
@@ -125,6 +126,19 @@ async function archiveAirportFolder(): Promise<void> {
   }
 }
 
+async function syncPrivateFolder(): Promise<void> {
+  const config = await loadConfig();
+  const client = createTelegramClient(config);
+
+  try {
+    await startTelegramClient(client, config);
+    const dialogs = await collectDialogsWithState(client);
+    await syncPrivateDialogsToFolder(client, dialogs, config.dryRun);
+  } finally {
+    await client.destroy();
+  }
+}
+
 async function runWorkflow(): Promise<void> {
   await exportSnapshot();
   await classifySnapshotFile(true);
@@ -153,11 +167,14 @@ async function main(): Promise<void> {
     case "archive-airport":
       await archiveAirportFolder();
       return;
+    case "sync-private-folder":
+      await syncPrivateFolder();
+      return;
     case "run":
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, archive-airport, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, archive-airport, sync-private-folder, run`);
   }
 }
 
