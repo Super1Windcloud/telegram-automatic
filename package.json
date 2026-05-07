@@ -12,7 +12,7 @@
     "folders": "tsx index.ts folders",
     "unfiled": "tsx index.ts unfiled",
     "stats": "tsx index.ts folder-stats",
-    "archive-airport": "tsx index.ts archive-airport",
+    "archive-folder": "tsx index.ts archive-folder",
     "sync-private-folder": "tsx index.ts sync-private-folder",
     "start": "tsx index.ts run",
     "sync-folders": "tsx index.ts run",

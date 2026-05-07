@@ -108,7 +108,7 @@ async function exportFolderStats(): Promise<void> {
   }
 }
 
-async function archiveAirportFolder(): Promise<void> {
+async function archiveFolder(): Promise<void> {
   const config = await loadConfig();
   const client = createTelegramClient(config);
 
@@ -164,8 +164,8 @@ async function main(): Promise<void> {
     case "folder-stats":
       await exportFolderStats();
       return;
-    case "archive-airport":
-      await archiveAirportFolder();
+    case "archive-folder":
+      await archiveFolder();
       return;
     case "sync-private-folder":
       await syncPrivateFolder();
@@ -174,7 +174,7 @@ async function main(): Promise<void> {
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, archive-airport, sync-private-folder, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, archive-folder, sync-private-folder, run`);
   }
 }
 
