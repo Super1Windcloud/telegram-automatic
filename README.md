@@ -67,7 +67,7 @@ Command summary:
 - `folders`: rebuild Telegram folders from the classified output
 - `unfiled`: export dialogs that are not included in any current custom Telegram folder
 - `folder-stats`: export all current Telegram folder stats to `folder_stats.json`
-- `archive-airport`: archive all dialogs currently included in the custom Telegram folder named `机场`
+- `archive-airport`: prompt for a custom Telegram folder name, then archive all dialogs currently included in that folder
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.

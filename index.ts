@@ -113,8 +113,13 @@ async function archiveAirportFolder(): Promise<void> {
 
   try {
     await startTelegramClient(client, config);
+    const folderTitle = (await client.input("请输入要归档的文件夹名称: ")).trim();
+    if (!folderTitle) {
+      throw new Error("文件夹名称不能为空。");
+    }
+
     const dialogs = await collectDialogsWithState(client);
-    await archiveFolderByTitle(client, dialogs, "机场", config.dryRun);
+    await archiveFolderByTitle(client, dialogs, folderTitle, config.dryRun);
   } finally {
     await client.destroy();
   }
