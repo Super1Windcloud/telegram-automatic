@@ -37,6 +37,7 @@ export type DialogRecord = {
   types: RuleType[];
   description: string;
   entityKind?: "user" | "bot" | "group" | "supergroup" | "channel" | "unknown";
+  isDeleted?: boolean;
   peerType?: string;
   chatType?: string | null;
   inputPeerType?: string;

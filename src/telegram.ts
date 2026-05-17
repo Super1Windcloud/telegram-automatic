@@ -108,6 +108,7 @@ export async function collectDialogsWithState(client: TelegramClient): Promise<C
         types,
         description: buildDialogDescription(dialog, peer, types),
         entityKind: getEntityKind(peer),
+        isDeleted: peer.type === "user" ? peer.isDeleted : undefined,
         peerType: peer.type,
         chatType: "chatType" in peer ? peer.chatType : null,
         inputPeerType: inputPeer._,

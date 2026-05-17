@@ -58,6 +58,7 @@ npm run unfiled
 npm run folder-stats
 npm run archive-folder
 npm run sync-private-folder
+npm run purge-deleted-users
 npm run run
 ```
 
@@ -70,6 +71,7 @@ Command summary:
 - `folder-stats`: export all current Telegram folder stats to `folder_stats.json`
 - `archive-folder`: prompt for a custom Telegram folder name, then archive all dialogs currently included in that folder
 - `sync-private-folder`: add unarchived private user dialogs that are not in any custom folder into the `私聊` folder
+- `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.
