@@ -1,6 +1,7 @@
 import { archiveFolderByTitle } from "./src/archive-folder.js";
 import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./src/classifier.js";
-import { getClassifiedPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
+import { getClassifiedPath, getFolderOverlapsPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
+import { collectFolderOverlaps, writeFolderOverlaps } from "./src/folder-overlaps.js";
 import { collectFolderStats, writeFolderStats } from "./src/folder-stats.js";
 import { applyClassifiedFolders } from "./src/folders.js";
 import { syncPrivateDialogsToFolder } from "./src/private-folder.js";
@@ -109,6 +110,25 @@ async function exportFolderStats(): Promise<void> {
   }
 }
 
+async function exportFolderOverlaps(): Promise<void> {
+  const config = await loadConfig();
+  const outputPath = getFolderOverlapsPath();
+  const client = createTelegramClient(config);
+
+  try {
+    await startTelegramClient(client, config);
+    const folders = (await client.getFolders()).filters;
+    const dialogs = await collectDialogsWithState(client);
+    const payload = collectFolderOverlaps(dialogs, folders);
+    await writeFolderOverlaps(outputPath, payload);
+    console.log(`已输出 ${payload.overlappedDialogCount} 个同时属于两个或更多自定义文件夹的会话到: ${outputPath}`);
+    console.log(`total_dialogs: ${payload.totalDialogs}`);
+    console.log(`custom_folder_count: ${payload.customFolderCount}`);
+  } finally {
+    await client.destroy();
+  }
+}
+
 async function archiveFolder(): Promise<void> {
   const config = await loadConfig();
   const client = createTelegramClient(config);
@@ -178,6 +198,9 @@ async function main(): Promise<void> {
     case "folder-stats":
       await exportFolderStats();
       return;
+    case "folder-overlaps":
+      await exportFolderOverlaps();
+      return;
     case "archive-folder":
       await archiveFolder();
       return;
@@ -191,7 +214,7 @@ async function main(): Promise<void> {
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, archive-folder, sync-private-folder, purge-deleted-users, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, archive-folder, sync-private-folder, purge-deleted-users, run`);
   }
 }
 

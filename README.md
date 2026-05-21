@@ -9,6 +9,7 @@ Utilities for exporting Telegram dialogs, classifying them with an OpenAI-compat
 - Rebuild Telegram folders from `classified_dialogs.json`
 - Export dialogs that are not in any custom Telegram folder
 - Export statistics for all current Telegram folders
+- Export dialogs that belong to two or more custom Telegram folders
 - Fall back to local rules when model output cannot be parsed
 - Support both a full workflow run and step-by-step commands
 
@@ -43,6 +44,7 @@ Supported environment variables:
 - `TELEGRAM_CLASSIFIED_OUTPUT`
 - `TELEGRAM_UNFILED_OUTPUT`
 - `TELEGRAM_FOLDER_STATS_OUTPUT`
+- `TELEGRAM_FOLDER_OVERLAPS_OUTPUT`
 - `OPENAI_BASE_URL`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
@@ -56,6 +58,7 @@ npm run classify
 npm run folders
 npm run unfiled
 npm run folder-stats
+npm run folder-overlaps
 npm run archive-folder
 npm run sync-private-folder
 npm run purge-deleted-users
@@ -69,12 +72,14 @@ Command summary:
 - `folders`: rebuild Telegram folders from the classified output
 - `unfiled`: export dialogs that are not included in any current custom Telegram folder
 - `folder-stats`: export all current Telegram folder stats to `folder_stats.json`
+- `folder-overlaps`: export dialogs that are included in two or more current custom Telegram folders to `folder_overlaps.json`
 - `archive-folder`: prompt for a custom Telegram folder name, then archive all dialogs currently included in that folder
 - `sync-private-folder`: add unarchived private user dialogs that are not in any custom folder into the `私聊` folder
 - `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.
+`npm run stats` and `npm run overlaps` are short aliases for the folder stats and folder overlap exports.
 
 ## Notes
 

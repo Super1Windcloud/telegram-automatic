@@ -97,3 +97,19 @@ export type FolderStatsPayload = {
   unfiledDialogsCount: number;
   results: FolderStat[];
 };
+
+export type FolderOverlapDialog = DialogRecord & {
+  folderCount: number;
+  folders: Array<{
+    id: number | null;
+    title: string;
+    type: string;
+  }>;
+};
+
+export type FolderOverlapsPayload = {
+  totalDialogs: number;
+  customFolderCount: number;
+  overlappedDialogCount: number;
+  results: FolderOverlapDialog[];
+};

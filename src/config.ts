@@ -8,6 +8,7 @@ export const SNAPSHOT_ENV = "TELEGRAM_DIALOG_SNAPSHOT";
 export const CLASSIFIED_ENV = "TELEGRAM_CLASSIFIED_OUTPUT";
 export const UNFILED_ENV = "TELEGRAM_UNFILED_OUTPUT";
 export const FOLDER_STATS_ENV = "TELEGRAM_FOLDER_STATS_OUTPUT";
+export const FOLDER_OVERLAPS_ENV = "TELEGRAM_FOLDER_OVERLAPS_OUTPUT";
 
 const DEFAULT_CONFIG_CANDIDATES = ["folder_rules.json", "telegram-folders.config.json"];
 
@@ -25,6 +26,10 @@ export function getUnfiledPath(): string {
 
 export function getFolderStatsPath(): string {
   return resolve(process.cwd(), process.env[FOLDER_STATS_ENV] ?? "folder_stats.json");
+}
+
+export function getFolderOverlapsPath(): string {
+  return resolve(process.cwd(), process.env[FOLDER_OVERLAPS_ENV] ?? "folder_overlaps.json");
 }
 
 export async function resolveConfigPath(): Promise<string> {
