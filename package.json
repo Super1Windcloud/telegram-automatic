@@ -15,6 +15,7 @@
     "folder-stats": "tsx index.ts folder-stats",
     "overlaps": "tsx index.ts folder-overlaps",
     "folder-overlaps": "tsx index.ts folder-overlaps",
+    "file-unfiled": "tsx index.ts file-unfiled",
     "archive-folder": "tsx index.ts archive-folder",
     "sync-private-folder": "tsx index.ts sync-private-folder",
     "purge-deleted-users": "tsx index.ts purge-deleted-users",

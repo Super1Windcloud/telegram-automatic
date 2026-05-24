@@ -1,7 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import type { tl } from "@mtcute/node";
 import { inputPeerKey, type CollectedDialog } from "./telegram.js";
-import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
 import type { FolderOverlapDialog, FolderOverlapsPayload } from "./types.js";
 
 type CustomFolder = tl.RawDialogFilter | tl.RawDialogFilterChatlist;
@@ -36,6 +35,10 @@ function folderRef(filter: CustomFolder): FolderRef {
   };
 }
 
+function collectExplicitFolderPeerKeys(folder: CustomFolder): Set<string> {
+  return new Set([...folder.includePeers, ...folder.pinnedPeers].map((peer) => inputPeerKey(peer)));
+}
+
 export function collectFolderOverlaps(
   dialogs: CollectedDialog[],
   folders: tl.TypeDialogFilter[],
@@ -45,7 +48,7 @@ export function collectFolderOverlaps(
 
   for (const folder of customFolders) {
     const ref = folderRef(folder);
-    for (const peerKey of collectDialogPeerKeysInCustomFolder(dialogs, folder)) {
+    for (const peerKey of collectExplicitFolderPeerKeys(folder)) {
       foldersByPeerKey.set(peerKey, [...(foldersByPeerKey.get(peerKey) ?? []), ref]);
     }
   }

@@ -1,14 +1,14 @@
 {
-  "totalFolders": 11,
-  "totalDialogs": 323,
-  "customFolderFiledDialogsUniqueCount": 295,
+  "totalFolders": 9,
+  "totalDialogs": 267,
+  "customFolderFiledDialogsUniqueCount": 239,
   "unfiledDialogsCount": 28,
   "results": [
     {
       "type": "dialogFilterDefault",
       "id": null,
       "title": "All",
-      "dialogCount": 323,
+      "dialogCount": 267,
       "includedPeerCount": 0,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
@@ -24,92 +24,16 @@
       }
     },
     {
-      "type": "dialogFilterChatlist",
-      "id": 7,
-      "title": "吃瓜",
-      "dialogCount": 24,
-      "includedPeerCount": 25,
-      "pinnedPeerCount": 0,
-      "excludePeerCount": 0,
-      "flags": {
-        "contacts": null,
-        "nonContacts": null,
-        "groups": null,
-        "broadcasts": null,
-        "bots": null,
-        "excludeMuted": null,
-        "excludeRead": null,
-        "excludeArchived": null
-      }
-    },
-    {
-      "type": "dialogFilter",
-      "id": 6,
-      "title": "私聊",
-      "dialogCount": 20,
-      "includedPeerCount": 52,
-      "pinnedPeerCount": 0,
-      "excludePeerCount": 0,
-      "flags": {
-        "contacts": false,
-        "nonContacts": false,
-        "groups": false,
-        "broadcasts": false,
-        "bots": false,
-        "excludeMuted": false,
-        "excludeRead": false,
-        "excludeArchived": false
-      }
-    },
-    {
-      "type": "dialogFilter",
-      "id": 8,
-      "title": "小姐",
-      "dialogCount": 83,
-      "includedPeerCount": 83,
-      "pinnedPeerCount": 0,
-      "excludePeerCount": 0,
-      "flags": {
-        "contacts": false,
-        "nonContacts": false,
-        "groups": false,
-        "broadcasts": false,
-        "bots": false,
-        "excludeMuted": false,
-        "excludeRead": false,
-        "excludeArchived": false
-      }
-    },
-    {
-      "type": "dialogFilter",
-      "id": 11,
-      "title": "兼职",
-      "dialogCount": 28,
-      "includedPeerCount": 28,
-      "pinnedPeerCount": 0,
-      "excludePeerCount": 0,
-      "flags": {
-        "contacts": false,
-        "nonContacts": false,
-        "groups": false,
-        "broadcasts": false,
-        "bots": false,
-        "excludeMuted": false,
-        "excludeRead": false,
-        "excludeArchived": false
-      }
-    },
-    {
       "type": "dialogFilter",
       "id": 4,
-      "title": "资讯",
-      "dialogCount": 43,
-      "includedPeerCount": 43,
+      "title": "私聊",
+      "dialogCount": 67,
+      "includedPeerCount": 0,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
-        "contacts": false,
-        "nonContacts": false,
+        "contacts": true,
+        "nonContacts": true,
         "groups": false,
         "broadcasts": false,
         "bots": false,
@@ -122,8 +46,8 @@
       "type": "dialogFilter",
       "id": 2,
       "title": "成人",
-      "dialogCount": 14,
-      "includedPeerCount": 15,
+      "dialogCount": 19,
+      "includedPeerCount": 19,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -141,8 +65,8 @@
       "type": "dialogFilter",
       "id": 10,
       "title": "搜索",
-      "dialogCount": 13,
-      "includedPeerCount": 0,
+      "dialogCount": 14,
+      "includedPeerCount": 1,
       "pinnedPeerCount": 13,
       "excludePeerCount": 0,
       "flags": {
@@ -157,11 +81,30 @@
       }
     },
     {
+      "type": "dialogFilterChatlist",
+      "id": 7,
+      "title": "吃瓜",
+      "dialogCount": 15,
+      "includedPeerCount": 16,
+      "pinnedPeerCount": 0,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": null,
+        "nonContacts": null,
+        "groups": null,
+        "broadcasts": null,
+        "bots": null,
+        "excludeMuted": null,
+        "excludeRead": null,
+        "excludeArchived": null
+      }
+    },
+    {
       "type": "dialogFilter",
-      "id": 3,
-      "title": "机器人",
-      "dialogCount": 24,
-      "includedPeerCount": 28,
+      "id": 11,
+      "title": "兼职",
+      "dialogCount": 23,
+      "includedPeerCount": 23,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -179,8 +122,27 @@
       "type": "dialogFilter",
       "id": 9,
       "title": "开户约炮",
-      "dialogCount": 33,
-      "includedPeerCount": 33,
+      "dialogCount": 18,
+      "includedPeerCount": 10,
+      "pinnedPeerCount": 8,
+      "excludePeerCount": 0,
+      "flags": {
+        "contacts": false,
+        "nonContacts": false,
+        "groups": false,
+        "broadcasts": false,
+        "bots": false,
+        "excludeMuted": false,
+        "excludeRead": false,
+        "excludeArchived": false
+      }
+    },
+    {
+      "type": "dialogFilter",
+      "id": 8,
+      "title": "小姐",
+      "dialogCount": 77,
+      "includedPeerCount": 77,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {
@@ -196,10 +158,10 @@
     },
     {
       "type": "dialogFilter",
-      "id": 5,
-      "title": "灰灰",
-      "dialogCount": 15,
-      "includedPeerCount": 15,
+      "id": 12,
+      "title": "资讯",
+      "dialogCount": 24,
+      "includedPeerCount": 24,
       "pinnedPeerCount": 0,
       "excludePeerCount": 0,
       "flags": {

@@ -10,6 +10,7 @@ Utilities for exporting Telegram dialogs, classifying them with an OpenAI-compat
 - Export dialogs that are not in any custom Telegram folder
 - Export statistics for all current Telegram folders
 - Export dialogs that belong to two or more custom Telegram folders
+- Add dialogs from `unfiled_dialogs.json` to a named Telegram folder
 - Fall back to local rules when model output cannot be parsed
 - Support both a full workflow run and step-by-step commands
 
@@ -59,6 +60,7 @@ npm run folders
 npm run unfiled
 npm run folder-stats
 npm run folder-overlaps
+npm run file-unfiled -- 目标文件夹名称
 npm run archive-folder
 npm run sync-private-folder
 npm run purge-deleted-users
@@ -73,6 +75,7 @@ Command summary:
 - `unfiled`: export dialogs that are not included in any current custom Telegram folder
 - `folder-stats`: export all current Telegram folder stats to `folder_stats.json`
 - `folder-overlaps`: export dialogs that are included in two or more current custom Telegram folders to `folder_overlaps.json`
+- `file-unfiled`: add dialogs from `unfiled_dialogs.json` to the specified folder; creates it if missing
 - `archive-folder`: prompt for a custom Telegram folder name, then archive all dialogs currently included in that folder
 - `sync-private-folder`: add unarchived private user dialogs that are not in any custom folder into the `私聊` folder
 - `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated

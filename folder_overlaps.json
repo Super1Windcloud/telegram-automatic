@@ -1,0 +1,42 @@
+{
+  "totalDialogs": 267,
+  "customFolderCount": 10,
+  "overlappedDialogCount": 1,
+  "results": [
+    {
+      "id": 6321448605,
+      "title": "🔍超级索引 @CJSY",
+      "username": "cjsy",
+      "types": [
+        "private",
+        "bot"
+      ],
+      "description": "title=🔍超级索引 @CJSY; types=private,bot; username=cjsy; unread=0; archived=false; pinned=false",
+      "entityKind": "bot",
+      "isDeleted": false,
+      "peerType": "user",
+      "chatType": null,
+      "inputPeerType": "inputPeerUser",
+      "hasPublicUsername": true,
+      "normalizedId": 6321448605,
+      "folderCount": 3,
+      "folders": [
+        {
+          "id": 3,
+          "title": "1",
+          "type": "dialogFilter"
+        },
+        {
+          "id": 5,
+          "title": "2",
+          "type": "dialogFilter"
+        },
+        {
+          "id": 10,
+          "title": "搜索",
+          "type": "dialogFilter"
+        }
+      ]
+    }
+  ]
+}

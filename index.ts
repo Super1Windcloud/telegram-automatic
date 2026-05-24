@@ -1,6 +1,7 @@
 import { archiveFolderByTitle } from "./src/archive-folder.js";
 import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./src/classifier.js";
 import { getClassifiedPath, getFolderOverlapsPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
+import { addUnfiledDialogsToFolder, readUnfiledDialogs } from "./src/file-unfiled.js";
 import { collectFolderOverlaps, writeFolderOverlaps } from "./src/folder-overlaps.js";
 import { collectFolderStats, writeFolderStats } from "./src/folder-stats.js";
 import { applyClassifiedFolders } from "./src/folders.js";
@@ -129,6 +130,26 @@ async function exportFolderOverlaps(): Promise<void> {
   }
 }
 
+async function fileUnfiledDialogs(): Promise<void> {
+  const config = await loadConfig();
+  const unfiledPath = getUnfiledPath();
+  const client = createTelegramClient(config);
+
+  try {
+    await startTelegramClient(client, config);
+    const folderTitle = (process.argv[3] ?? await client.input("请输入要加入的文件夹名称: ")).trim();
+    if (!folderTitle) {
+      throw new Error("文件夹名称不能为空。");
+    }
+
+    const payload = await readUnfiledDialogs(unfiledPath);
+    const dialogs = await collectDialogsWithState(client);
+    await addUnfiledDialogsToFolder(client, dialogs, payload, folderTitle, config.dryRun);
+  } finally {
+    await client.destroy();
+  }
+}
+
 async function archiveFolder(): Promise<void> {
   const config = await loadConfig();
   const client = createTelegramClient(config);
@@ -201,6 +222,9 @@ async function main(): Promise<void> {
     case "folder-overlaps":
       await exportFolderOverlaps();
       return;
+    case "file-unfiled":
+      await fileUnfiledDialogs();
+      return;
     case "archive-folder":
       await archiveFolder();
       return;
@@ -214,7 +238,7 @@ async function main(): Promise<void> {
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, archive-folder, sync-private-folder, purge-deleted-users, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, file-unfiled, archive-folder, sync-private-folder, purge-deleted-users, run`);
   }
 }
 
