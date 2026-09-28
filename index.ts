@@ -1,5 +1,7 @@
 import { archiveFolderByTitle } from "./src/archive-folder.js";
+import { clearPrivateFolderDialogs } from "./src/clear-private-folder.js";
 import { classificationExists, classifySnapshot, readClassification, writeClassification } from "./src/classifier.js";
+import { commandAndPositionals, readDryRunFlag } from "./src/cli.js";
 import { getClassifiedPath, getFolderOverlapsPath, getFolderStatsPath, getSnapshotPath, getUnfiledPath, loadConfig, resolveConfigPath } from "./src/config.js";
 import { addUnfiledDialogsToFolder, readUnfiledDialogs } from "./src/file-unfiled.js";
 import { collectFolderOverlaps, writeFolderOverlaps } from "./src/folder-overlaps.js";
@@ -137,7 +139,7 @@ async function fileUnfiledDialogs(): Promise<void> {
 
   try {
     await startTelegramClient(client, config);
-    const folderTitle = (process.argv[3] ?? await client.input("请输入要加入的文件夹名称: ")).trim();
+    const folderTitle = (commandAndPositionals().positionals[0] ?? await client.input("请输入要加入的文件夹名称: ")).trim();
     if (!folderTitle) {
       throw new Error("文件夹名称不能为空。");
     }
@@ -181,6 +183,19 @@ async function syncPrivateFolder(): Promise<void> {
   }
 }
 
+async function clearPrivateFolder(): Promise<void> {
+  const config = await loadConfig();
+  const client = createTelegramClient(config);
+
+  try {
+    await startTelegramClient(client, config);
+    const dialogs = await collectDialogsWithState(client);
+    await clearPrivateFolderDialogs(client, dialogs, config.dryRun);
+  } finally {
+    await client.destroy();
+  }
+}
+
 async function purgeDeletedUsers(): Promise<void> {
   const config = await loadConfig();
   const client = createTelegramClient(config);
@@ -201,7 +216,12 @@ async function runWorkflow(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const command = process.argv[2] ?? "run";
+  const dryRunFlag = readDryRunFlag();
+  if (dryRunFlag !== undefined) {
+    console.log(`dry_run: ${dryRunFlag}（命令行参数）`);
+  }
+
+  const command = commandAndPositionals().command;
 
   switch (command) {
     case "snapshot":
@@ -231,6 +251,9 @@ async function main(): Promise<void> {
     case "sync-private-folder":
       await syncPrivateFolder();
       return;
+    case "clear-private-folder":
+      await clearPrivateFolder();
+      return;
     case "purge-deleted-users":
       await purgeDeletedUsers();
       return;
@@ -238,7 +261,7 @@ async function main(): Promise<void> {
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, file-unfiled, archive-folder, sync-private-folder, purge-deleted-users, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, file-unfiled, archive-folder, sync-private-folder, clear-private-folder, purge-deleted-users, run`);
   }
 }
 

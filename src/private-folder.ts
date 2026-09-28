@@ -3,7 +3,7 @@ import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
 import { dedupeInputPeers, inputPeerKey, type CollectedDialog } from "./telegram.js";
 
 const EXCLUDED_TITLES = new Set(["demo", "superwindcloud"]);
-const PRIVATE_FOLDER_TITLE = "私聊";
+export const PRIVATE_FOLDER_TITLE = "私聊";
 
 function titleText(filter: tl.TypeDialogFilter): string {
   if ("title" in filter && filter.title && typeof filter.title === "object" && "text" in filter.title) {

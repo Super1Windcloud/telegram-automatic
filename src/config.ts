@@ -1,6 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { resolve } from "node:path";
+import { readDryRunFlag } from "./cli.js";
 import type { AppConfig, OpenAiConfig, RuleConfig, RuleType } from "./types.js";
 
 export const CONFIG_ENV = "TELEGRAM_FOLDER_RULES";
@@ -164,6 +165,11 @@ export async function loadConfig(): Promise<AppConfig> {
   }
   if (!config.apiHash) {
     throw new Error(`配置中的 api_hash/apiHash 不能为空: ${path}`);
+  }
+
+  const dryRunFlag = readDryRunFlag();
+  if (dryRunFlag !== undefined) {
+    config.dryRun = dryRunFlag;
   }
 
   return config;

@@ -18,6 +18,7 @@
     "file-unfiled": "tsx index.ts file-unfiled",
     "archive-folder": "tsx index.ts archive-folder",
     "sync-private-folder": "tsx index.ts sync-private-folder",
+    "clear-private-folder": "tsx index.ts clear-private-folder",
     "purge-deleted-users": "tsx index.ts purge-deleted-users",
     "start": "tsx index.ts run",
     "sync-folders": "tsx index.ts run",

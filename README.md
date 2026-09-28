@@ -30,7 +30,7 @@ Then fill in:
 - `api_hash`
 - `phone`
 - `session_name`
-- `dry_run`
+- `dry_run`（可被命令行 `--dry-run` / `--no-dry-run` 覆盖）
 - `openai.base_url`
 - `openai.api_key`
 - `openai.model`
@@ -63,6 +63,8 @@ npm run folder-overlaps
 npm run file-unfiled -- 目标文件夹名称
 npm run archive-folder
 npm run sync-private-folder
+npm run clear-private-folder
+npm run clear-private-folder -- --dry-run
 npm run purge-deleted-users
 npm run run
 ```
@@ -78,6 +80,7 @@ Command summary:
 - `file-unfiled`: add dialogs from `unfiled_dialogs.json` to the specified folder; creates it if missing
 - `archive-folder`: prompt for a custom Telegram folder name, then archive all dialogs currently included in that folder
 - `sync-private-folder`: add unarchived private user dialogs that are not in any custom folder into the `私聊` folder
+- `clear-private-folder`: delete dialogs that belong only to the `私聊` folder. Dialogs that also belong to another custom folder are skipped. Pass `--dry-run` to preview, or `--no-dry-run` to execute even when `dry_run` is true in the config file. The same flags apply to the other mutating commands.
 - `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
