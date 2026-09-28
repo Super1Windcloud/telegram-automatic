@@ -16,4 +16,8 @@ telegram-auto
 classified_dialogs.json
 dialogs_snapshot.json
 unfiled_dialogs.json
+folder_stats.json
+folder_overlaps.json
+
+$dir/
 
