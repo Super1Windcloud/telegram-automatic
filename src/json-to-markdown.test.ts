@@ -24,7 +24,8 @@ test("text and image-only posts render images without source metadata or inline 
   assert.equal(result.markdown.includes(image.base64), false);
   assert.equal(result.imageCount, 2);
   assert.equal(result.assets.length, 1, "identical images share an asset without merging posts");
-  assert.equal((result.markdown.match(/!\[图片 1\]\(images\//g) ?? []).length, 2);
+  assert.equal((result.markdown.match(/<img src="images\//g) ?? []).length, 2);
+  assert.ok(result.markdown.includes('width="120" loading="lazy"'));
   assert.deepEqual(result.assets[0].bytes, Buffer.from(image.base64, "base64"));
 });
 
@@ -46,6 +47,10 @@ test("input defaults follow scan output; environment and CLI paths override defa
   assert.equal(defaults.input, resolve("custom/export.json"));
   assert.equal(defaults.output, resolve("custom/export.md"));
   assert.equal(defaults.assetsDirectory, resolve("custom/export.assets"));
+  assert.equal(defaults.imageWidth, 120);
+  assert.equal(readMarkdownOptions([], { TELEGRAM_MARKDOWN_IMAGE_WIDTH: "96" }).imageWidth, 96);
+  assert.equal(readMarkdownOptions(["--image-width", "80"], { TELEGRAM_MARKDOWN_IMAGE_WIDTH: "96" }).imageWidth, 80);
+  for (const width of ["0", "-1", "12.5", "100px", "NaN"]) assert.throws(() => readMarkdownOptions(["--image-width", width], {}));
   const configured = readMarkdownOptions([], { TELEGRAM_MARKDOWN_INPUT: "a.json", TELEGRAM_MARKDOWN_OUTPUT: "a.md" });
   assert.equal(configured.input, resolve("a.json"));
   const cli = readMarkdownOptions(["--input", "b.json", "--output", "b.md"], { TELEGRAM_MARKDOWN_INPUT: "a.json", TELEGRAM_MARKDOWN_OUTPUT: "a.md" });
@@ -75,7 +80,7 @@ test("written Markdown image paths resolve to real files with Chinese names and 
   try {
     const result = await writeContentMarkdown({ records: [{ text: "", images: [image, image] }] }, options);
     const markdown = await readFile(options.output, "utf8");
-    const paths = [...markdown.matchAll(/!\[图片 \d+\]\(([^)]+)\)/g)].map((match) => resolve(outputDirectory, decodeURIComponent(match[1])));
+    const paths = [...markdown.matchAll(/<img src="([^"]+)"/g)].map((match) => resolve(outputDirectory, decodeURIComponent(match[1])));
     assert.equal(paths.length, 2);
     assert.equal(paths[0], paths[1]);
     assert.deepEqual(await readFile(paths[0]), Buffer.from(image.base64, "base64"));
@@ -88,4 +93,19 @@ test("written Markdown image paths resolve to real files with Chinese names and 
     await rmdir(outputDirectory);
     await rmdir(directory);
   }
+});
+
+test("thumbnails share one paragraph, use configured width and link to full images", () => {
+  const result = renderContentMarkdown({ records: [{ text: "图文", images: [image, image, image] }] }, "images", 88);
+  assert.match(result.markdown, /<\/a> <a href=/);
+  assert.doesNotMatch(result.markdown, /<\/a>\n\n<a/);
+  const thumbnails = [...result.markdown.matchAll(/<a href="([^"]+)"><img src="([^"]+)" alt="图片 (\d+)" width="(\d+)" loading="lazy"><\/a>/g)];
+  assert.equal(thumbnails.length, 3);
+  for (const thumbnail of thumbnails) {
+    assert.equal(thumbnail[1], thumbnail[2]);
+    assert.equal(thumbnail[4], "88");
+  }
+  const escaped = renderContentMarkdown({ records: [{ text: "", images: [image] }] }, 'images" onerror="bad');
+  assert.ok(escaped.markdown.includes("&quot;"));
+  assert.equal(escaped.markdown.includes(' onerror="bad'), false);
 });

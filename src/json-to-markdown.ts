@@ -3,33 +3,46 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { loadEnvironment } from "./env.js";
 
+function imageWidth(value: string | number): number {
+  if (!/^[1-9]\d*$/.test(String(value)) || !Number.isSafeInteger(Number(value))) {
+    throw new Error("TELEGRAM_MARKDOWN_IMAGE_WIDTH / --image-width 必须是正整数（像素）。");
+  }
+  return Number(value);
+}
+
 export function readMarkdownOptions(argv: string[], environment: NodeJS.ProcessEnv = process.env) {
   let input = environment.TELEGRAM_MARKDOWN_INPUT?.trim()
     || resolve(environment.TELEGRAM_SCAN_OUTPUT?.trim() || "weight-scan", environment.TELEGRAM_SCAN_EXPORT_FILE?.trim() || "folder-content.json");
   let output = environment.TELEGRAM_MARKDOWN_OUTPUT?.trim();
   let assetsDirectory = environment.TELEGRAM_MARKDOWN_ASSETS_DIR?.trim();
+  let width = environment.TELEGRAM_MARKDOWN_IMAGE_WIDTH?.trim() || "120";
   let help = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--") continue;
     if (arg === "--help") { help = true; continue; }
-    if (arg !== "--input" && arg !== "--output" && arg !== "--assets-dir") throw new Error(`未知转换参数: ${arg}`);
+    if (!["--input", "--output", "--assets-dir", "--image-width"].includes(arg)) throw new Error(`未知转换参数: ${arg}`);
     const value = argv[++i];
     if (!value?.trim() || value.startsWith("--")) throw new Error(`${arg} 缺少路径。`);
     if (arg === "--input") input = value;
     else if (arg === "--output") output = value;
-    else assetsDirectory = value;
+    else if (arg === "--assets-dir") assetsDirectory = value;
+    else width = value;
   }
   input = resolve(input);
   output = resolve(output || `${input.slice(0, input.length - extname(input).length)}.md`);
   if (input.toLowerCase() === output.toLowerCase()) throw new Error("Markdown 输出路径不能与输入 JSON 相同。");
   if (![".md", ".markdown"].includes(extname(output).toLowerCase())) throw new Error("输出文件必须使用 .md 或 .markdown 扩展名。");
   assetsDirectory = resolve(dirname(output), assetsDirectory || `${basename(output, extname(output))}.assets`);
-  return { input, output, assetsDirectory, help };
+  return { input, output, assetsDirectory, imageWidth: imageWidth(width), help };
 }
 
 function inline(value: string): string {
   return value.replace(/[\r\n]+/g, " ").replace(/[\\`*_[\]<>]/g, "\\$&");
+}
+
+function htmlAttribute(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 type MarkdownAsset = { fileName: string; bytes: Buffer };
@@ -49,7 +62,8 @@ function imageAsset(value: unknown, context: string): MarkdownAsset {
   return { fileName: `${hash}.${extension}`, bytes };
 }
 
-export function renderContentMarkdown(payload: unknown, imageUrlPrefix = "images") {
+export function renderContentMarkdown(payload: unknown, imageUrlPrefix = "images", width = 120) {
+  const thumbnailWidth = imageWidth(width);
   if (!payload || typeof payload !== "object" || !("records" in payload) || !Array.isArray(payload.records)) {
     throw new Error("输入 JSON 缺少 records 数组，请使用 scan 导出的 JSON。");
   }
@@ -65,22 +79,23 @@ export function renderContentMarkdown(payload: unknown, imageUrlPrefix = "images
       const asset = imageAsset(image, `records[${index}].images[${imageIndex}]`);
       if (!assets.has(asset.fileName)) assets.set(asset.fileName, asset);
       imageCount += 1;
-      return `![图片 ${imageIndex + 1}](${imageUrlPrefix}/${asset.fileName})`;
+      const url = htmlAttribute(`${imageUrlPrefix}/${asset.fileName}`);
+      return `<a href="${url}"><img src="${url}" alt="图片 ${imageIndex + 1}" width="${thumbnailWidth}" loading="lazy"></a>`;
     });
     if (!row.text.trim() && !images.length) { skipped += 1; continue; }
     const text = row.text.trim() ? row.text.split(/\r\n|\n|\r/).map((line: string) => `> ${line}${line ? "  " : ""}`).join("\n") : "";
-    sections.push([`## ${sections.length + 1}`, text, ...images].filter(Boolean).join("\n\n"));
+    sections.push([`## ${sections.length + 1}`, text, images.join(" ")].filter(Boolean).join("\n\n"));
   }
   const incomplete = "complete" in payload && payload.complete === false ? "> 原始 JSON 标记为未完成采集，本文仅包含其中已导出的内容。\n\n" : "";
   const markdown = `# ${inline(folder)} · 消息内容\n\n${incomplete}共 ${payload.records.length} 条内容，导出 ${sections.length} 条内容、${imageCount} 张图片，跳过 ${skipped} 条空内容。\n\n${sections.join("\n\n---\n\n")}\n`;
   return { markdown, exported: sections.length, skipped, imageCount, assets: [...assets.values()] };
 }
 
-export async function writeContentMarkdown(payload: unknown, options: { output: string; assetsDirectory: string }) {
+export async function writeContentMarkdown(payload: unknown, options: { output: string; assetsDirectory: string; imageWidth?: number }) {
   const assetPath = relative(dirname(options.output), options.assetsDirectory);
   if (isAbsolute(assetPath)) throw new Error("图片目录必须与 Markdown 位于同一驱动器，以生成相对图片链接。");
   const prefix = assetPath.split(sep).map((part) => encodeURIComponent(part).replace(/\(/g, "%28").replace(/\)/g, "%29")).join("/") || ".";
-  const result = renderContentMarkdown(payload, prefix);
+  const result = renderContentMarkdown(payload, prefix, options.imageWidth);
   await mkdir(dirname(options.output), { recursive: true });
   if (result.assets.length) await mkdir(options.assetsDirectory, { recursive: true });
   for (const asset of result.assets) await writeFile(resolve(options.assetsDirectory, asset.fileName), asset.bytes);
@@ -92,7 +107,7 @@ export async function jsonToMarkdown(argv: string[]): Promise<void> {
   loadEnvironment();
   const options = readMarkdownOptions(argv);
   if (options.help) {
-    console.log("npm run json-to-markdown -- [--input <JSON路径>] [--output <Markdown路径>] [--assets-dir <图片目录>]\n默认读取扫描 JSON，生成同名 .md 和 .assets 图片目录；支持 TELEGRAM_MARKDOWN_INPUT / TELEGRAM_MARKDOWN_OUTPUT / TELEGRAM_MARKDOWN_ASSETS_DIR。\n仅导出文字及图片，不显示来源；以相对路径渲染图片，不调用 Telegram、OCR 或模型。");
+    console.log("npm run json-to-markdown -- [--input <JSON路径>] [--output <Markdown路径>] [--assets-dir <图片目录>] [--image-width <像素>]\n默认读取扫描 JSON，生成同名 .md 和 .assets 图片目录；使用 TELEGRAM_MARKDOWN_* 配置路径和缩略图宽度。\n图片默认宽 120px，同一段内紧凑排列、自动换行，点击查看原图；需要阅读器支持内嵌 HTML。仅导出图文，不显示来源，不调用 Telegram、OCR 或模型。");
     return;
   }
   const payload: unknown = JSON.parse(await readFile(options.input, "utf8"));

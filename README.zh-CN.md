@@ -58,7 +58,9 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 
 默认输入继承 `TELEGRAM_SCAN_OUTPUT` 和 `TELEGRAM_SCAN_EXPORT_FILE`，默认输出将输入扩展名改为 `.md`。也可以在 `.env` 中设置 `TELEGRAM_MARKDOWN_INPUT` 和 `TELEGRAM_MARKDOWN_OUTPUT`，命令行 `--input` / `--output` 优先。
 
-转换 `records[].text` 和 `records[].images`，保持内容顺序和原文换行；Markdown 不显示来源频道、时间或链接，来源仍保留在输入 JSON 中。Base64 图片会解码到 Markdown 旁的同名 `.assets/` 目录，再通过相对路径 `![图片](...)` 渲染。纯图片条目也会保留，只有既无文字又无图片的条目才跳过。移动或分享 Markdown 时，需要同时携带图片目录。
+转换 `records[].text` 和 `records[].images`，保持内容顺序和原文换行；Markdown 不显示来源频道、时间或链接，来源仍保留在输入 JSON 中。Base64 图片会解码到 Markdown 旁的同名 `.assets/` 目录。同一条内容中的图片在一个段落内并排排列，空间不足时自动换行，默认宽 120px，保持比例、不裁剪，点击缩略图可查看原图。此排版需要 Markdown 阅读器支持内嵌 HTML 图片。
+
+缩略图宽度可在 `.env` 中设置 `TELEGRAM_MARKDOWN_IMAGE_WIDTH=120`，或通过 `--image-width 96` 临时覆盖。纯图片条目也会保留，只有既无文字又无图片的条目才跳过。移动或分享 Markdown 时，需要同时携带图片目录。
 
 图片目录可通过 `.env` 的 `TELEGRAM_MARKDOWN_ASSETS_DIR` 或 `--assets-dir` 指定；相对目录以 Markdown 所在目录为基准，图片和 Markdown 必须位于同一驱动器。例如默认生成 `weight-scan/folder-content.md` 和 `weight-scan/folder-content.assets/`。
 
