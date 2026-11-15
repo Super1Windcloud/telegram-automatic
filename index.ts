@@ -12,7 +12,7 @@ import { purgeDeletedUserDialogs } from "./src/purge-deleted-users.js";
 import { readSnapshot, writeSnapshot } from "./src/snapshot.js";
 import { collectDialogs, collectDialogsWithState, createTelegramClient, startTelegramClient } from "./src/telegram.js";
 import { collectUnfiledDialogs, writeUnfiledDialogs } from "./src/unfiled.js";
-import { scanFolderWeight } from "./src/weight-scan.js";
+import { scanFolderContents } from "./src/folder-scan.js";
 import { loadEnvironment } from "./src/env.js";
 
 async function exportSnapshot(): Promise<void> {
@@ -227,8 +227,9 @@ async function main(): Promise<void> {
   const command = commandAndPositionals().command;
 
   switch (command) {
+    case "scan":
     case "scan-folder-weight":
-      await scanFolderWeight(process.argv.slice(3));
+      await scanFolderContents(process.argv.slice(3));
       return;
     case "snapshot":
       await exportSnapshot();
@@ -267,7 +268,7 @@ async function main(): Promise<void> {
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, file-unfiled, archive-folder, sync-private-folder, clear-private-folder, purge-deleted-users, scan-folder-weight, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, file-unfiled, archive-folder, sync-private-folder, clear-private-folder, purge-deleted-users, scan, scan-folder-weight, run`);
   }
 }
 

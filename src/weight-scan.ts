@@ -3,9 +3,8 @@ import { appendFile, mkdir, open, readFile, rename, unlink, writeFile } from "no
 import { resolve, join } from "node:path";
 import type { Message, TelegramClient, tl } from "@mtcute/node";
 import { loadConfig } from "./config.js";
-import { loadEnvironment } from "./env.js";
 import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
-import { collectDialogsWithState, createTelegramClient, inputPeerKey, startTelegramClient, type CollectedDialog } from "./telegram.js";
+import { inputPeerKey, type CollectedDialog } from "./telegram.js";
 import { ANALYSIS_PROMPT, analyzeContent, decideWeight, parseAnalysis, type Analysis, type ImageInput, type WeightDecision } from "./weight-analysis.js";
 
 export type ScanOptions = {
@@ -18,7 +17,7 @@ function positiveNumber(value: string, name: string): number {
   return Number(value);
 }
 
-export function readScanOptions(argv: string[], environment: NodeJS.ProcessEnv = process.env): ScanOptions {
+export function readScanOptions(argv: string[], environment: NodeJS.ProcessEnv = process.env, requireWeight = true): ScanOptions {
   const values = {
     folder: environment.TELEGRAM_SCAN_FOLDER?.trim() ?? "",
     limit: environment.TELEGRAM_SCAN_LIMIT?.trim() || "0",
@@ -48,17 +47,17 @@ export function readScanOptions(argv: string[], environment: NodeJS.ProcessEnv =
   if (help) return { folder: "", below: 0, limit: 0, output: resolve(values.output), dryRun: false, help: true,
     maxImageBytes: 0, maxAlbumBytes: 0, requestTimeoutMs: 0 };
   if (!values.folder) throw new Error("缺少 TELEGRAM_SCAN_FOLDER，请填写 .env 或使用 --folder。");
-  if (!values.below) throw new Error("缺少 TELEGRAM_SCAN_BELOW_JIN，请填写 .env 或使用 --below。");
+  if (requireWeight && !values.below) throw new Error("缺少 TELEGRAM_SCAN_BELOW_JIN，请填写 .env 或使用 --below。");
   if (!/^\d+$/.test(values.limit) || !Number.isSafeInteger(Number(values.limit))) throw new Error("TELEGRAM_SCAN_LIMIT / --limit 必须是非负整数，0 表示全部历史。");
   if (!["true", "false"].includes(values.dryRun)) throw new Error("TELEGRAM_SCAN_DRY_RUN 必须是 true 或 false。");
   const options: ScanOptions = {
-    folder: values.folder, limit: Number(values.limit), below: positiveNumber(values.below, "TELEGRAM_SCAN_BELOW_JIN / --below"),
+    folder: values.folder, limit: Number(values.limit), below: requireWeight ? positiveNumber(values.below, "TELEGRAM_SCAN_BELOW_JIN / --below") : 0,
     output: resolve(values.output), dryRun: values.dryRun === "true", help: false,
     maxImageBytes: positiveNumber(environment.TELEGRAM_SCAN_IMAGE_MAX_MIB?.trim() || "15", "TELEGRAM_SCAN_IMAGE_MAX_MIB") * 1024 * 1024,
     maxAlbumBytes: positiveNumber(environment.TELEGRAM_SCAN_ALBUM_MAX_MIB?.trim() || "40", "TELEGRAM_SCAN_ALBUM_MAX_MIB") * 1024 * 1024,
-    requestTimeoutMs: positiveNumber(environment.TELEGRAM_SCAN_REQUEST_TIMEOUT_MS?.trim() || "120000", "TELEGRAM_SCAN_REQUEST_TIMEOUT_MS"),
+    requestTimeoutMs: requireWeight ? positiveNumber(environment.TELEGRAM_SCAN_REQUEST_TIMEOUT_MS?.trim() || "120000", "TELEGRAM_SCAN_REQUEST_TIMEOUT_MS") : 0,
   };
-  if (!Number.isInteger(options.requestTimeoutMs) || options.requestTimeoutMs > 2_147_483_647) throw new Error("TELEGRAM_SCAN_REQUEST_TIMEOUT_MS 必须是 1 到 2147483647 的整数。");
+  if (requireWeight && (!Number.isInteger(options.requestTimeoutMs) || options.requestTimeoutMs > 2_147_483_647)) throw new Error("TELEGRAM_SCAN_REQUEST_TIMEOUT_MS 必须是 1 到 2147483647 的整数。");
   if (!Number.isSafeInteger(options.maxImageBytes) || !Number.isSafeInteger(options.maxAlbumBytes)) throw new Error("图片大小配置换算后的字节数必须是安全整数。");
   if (values.since) {
     const value = values.since;
@@ -132,30 +131,6 @@ function markdownRecord(record: ScanRecord): string {
     + `时间：${record.date}\n\n来源：${record.links.join(" ")}\n\n体重：${record.decision.weights.map((item) => `${item.jin} 斤`).join(" / ")}\n\n`
     + `摘要：\n${quote(record.analysis?.summary ?? "")}\n\n原文：\n${quote(record.texts.map((item) => `[${item.messageId}] ${item.text}`).join("\n"))}\n\n`
     + `OCR：\n${quote(record.analysis?.ocr.map((item) => `[${item.messageId}] ${item.text}`).join("\n") ?? "")}\n`;
-}
-
-export async function scanFolderWeight(argv: string[]): Promise<void> {
-  loadEnvironment();
-  const options = readScanOptions(argv);
-  if (options.help) {
-    console.log("npm run scan-folder-weight -- [--folder <名称>] [--limit <条数>] [--below <斤>] [--since <ISO日期>] [--output <目录>] [--dry-run]\n从 .env 加载 TELEGRAM_SCAN_* 配置，文件夹和体重阈值必填；命令行可覆盖。--limit=0 表示全部历史，相册完整读取。--dry-run 只列频道。\n文字及图片会提交至配置的模型接口；需要支持图片输入的模型。结果保存在本地，不修改 Telegram 数据。");
-    return;
-  }
-  const config = await loadConfig();
-  if (!options.dryRun && !config.openai.apiKey) throw new Error("缺少 openai.api_key 或 OPENAI_API_KEY。");
-  const client = createTelegramClient(config);
-  try {
-    await startTelegramClient(client, config);
-    const folders = (await client.getFolders()).filters;
-    const channels = selectChannels(await collectDialogsWithState(client), folders, options.folder);
-    console.log(`文件夹“${options.folder}”：${channels.length} 个频道；每频道 ${options.limit || "全部"} 条消息；体重 < ${options.below} 斤。`);
-    for (const channel of channels) console.log(`  ${channel.info.title} (${channel.info.id})`);
-    if (options.dryRun) return;
-    if (!channels.length) throw new Error("文件夹中没有可访问的频道。群聊和机器人不在扫描范围内。");
-    await runScan(client, channels, config.openai, options);
-  } finally {
-    await client.destroy();
-  }
 }
 
 export async function runScan(

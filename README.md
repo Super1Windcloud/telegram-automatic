@@ -13,7 +13,7 @@ Utilities for exporting Telegram dialogs, classifying them with an OpenAI-compat
 - Add dialogs from `unfiled_dialogs.json` to a named Telegram folder
 - Fall back to local rules when model output cannot be parsed
 - Support both a full workflow run and step-by-step commands
-- Scan channel history in a Telegram folder, summarize text, OCR images, and export messages below a weight threshold
+- Export folder channel content as formatted JSON, deduplicated by text, with Base64 images and videos skipped
 
 ## Configuration
 
@@ -73,7 +73,7 @@ npm run sync-private-folder
 npm run clear-private-folder
 npm run clear-private-folder -- --dry-run
 npm run purge-deleted-users
-npm run scan-folder-weight -- --dry-run
+npm run scan -- --dry-run
 npm run run
 ```
 
@@ -90,64 +90,54 @@ Command summary:
 - `sync-private-folder`: add unarchived private user dialogs that are not in any custom folder into the `私聊` folder
 - `clear-private-folder`: delete dialogs that belong only to the `私聊` folder. Dialogs that also belong to another custom folder are skipped. Pass `--dry-run` to preview, or `--no-dry-run` to execute even when `dry_run` is true in the config file. The same flags apply to the other mutating commands.
 - `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated
-- `scan-folder-weight`: read channels in a named folder, summarize posts, OCR images, and export weight matches (see below)
+- `scan`: collect and deduplicate folder content, export JSON, then stop; `scan-folder-weight` is a compatibility alias
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.
 `npm run stats` and `npm run overlaps` are short aliases for the folder stats and folder overlap exports.
 
-## Folder weight scan
+## Folder content scan
 
-The folder name and weight threshold are required settings, read from `TELEGRAM_SCAN_FOLDER` and `TELEGRAM_SCAN_BELOW_JIN` in `.env`, or supplied through `--folder` and `--below`. Neither business value is hardcoded in the scanner. Priority for scan options: **CLI flags > shell environment > `.env`**. Other scan options retain safe technical defaults when omitted.
-
-| Environment variable | Value in `.env.example` | Purpose |
-| --- | --- | --- |
-| `TELEGRAM_SCAN_FOLDER` | `小姐` | Exact Telegram folder title (required) |
-| `TELEGRAM_SCAN_BELOW_JIN` | `95` | Exclusive weight threshold, in jin (required) |
-| `TELEGRAM_SCAN_LIMIT` | `0` | Messages per channel; zero means all accessible history |
-| `TELEGRAM_SCAN_SINCE` | empty | Optional ISO date/time cutoff |
-| `TELEGRAM_SCAN_OUTPUT` | `weight-scan` | Report and cache directory |
-| `TELEGRAM_SCAN_DRY_RUN` | `false` | `true` lists channels only |
-| `TELEGRAM_SCAN_IMAGE_MAX_MIB` | `15` | Maximum size of one image, in MiB |
-| `TELEGRAM_SCAN_ALBUM_MAX_MIB` | `40` | Maximum total image size of an album, in MiB |
-| `TELEGRAM_SCAN_REQUEST_TIMEOUT_MS` | `120000` | Timeout for each model request, in milliseconds |
-
-Uses the existing Telegram user session and `openai` configuration. The model must support image inputs; the script sends message text and images to the configured API. Both Chat Completions and Responses are supported. `api_style: auto` tries Chat first and falls back to Responses only for an unavailable endpoint (404/405). For a custom gateway, set `api_style` explicitly if necessary. Image input follows the [official OpenAI documentation](https://developers.openai.com/api/docs/guides/images-vision).
+`scan` is a collection-only stage. It scans all selected channels first, deduplicates by message text across the entire folder, then downloads retained images and writes one formatted JSON file. It stops after export and waits for the user to specify the next step. It does not call a model, OCR images, summarize text or filter by weight. No model API key is required for this stage. `scan-folder-weight` is retained as an alias with the same collection-only behavior.
 
 ```powershell
-# List channels only, without reading messages or calling the model
-npm run scan-folder-weight -- --dry-run
+# List channels without collecting content
+npm run scan -- --dry-run
 
-# Small initial scan: latest 10 messages per channel (complete albums included)
-npm run scan-folder-weight -- --limit 10
+# Collect all accessible history using .env
+npm run scan
 
-# All accessible history using the folder and weight threshold configured in .env
-npm run scan-folder-weight
-
-# Optional folder, date, threshold and output directory
-npm run scan-folder-weight -- --folder 小姐 --since 2026-11-01 --below 95 --output weight-scan
+# Optional bounded scan or different date range
+npm run scan -- --limit 10
+npm run scan -- --since 2026-11-01 --output weight-scan
 ```
 
-- The supplied `.env.example` selects folder `小姐` and threshold **< 95 jin** (95 itself is excluded), with no history limit. Change `.env` to select another folder or threshold. `--limit 0` means all accessible history; positive limits apply separately to each channel. Complete albums can exceed the limit or extend past the date cutoff. Dates use UTC; timestamps must include a timezone, e.g. `2026-11-01T00:00:00+08:00`.
-- Only channels currently belonging to the folder are selected, including pinned channels. Group chats and bots are excluded. The command never joins channels, sends messages, changes folder membership, or marks messages as read. The configured session must already have access to the history.
-- Text and static JPEG/PNG/WebP images are analyzed. Images sent as documents are supported. Each album is summarized together; unrelated posts are kept separate. Videos, audio, stickers, other documents and webpage previews are not OCRed. These omissions are recorded as media types where applicable. The scanner does not follow links to other channels.
-- Weight is determined locally from explicit units in the original text and OCR, independently of the generated summary. `1 kg = 2 jin`; pounds are also converted. Unitless profiles such as `165/90/B`, unreadable text, ranges, qualified values, or conflicting weights are never automatically matched. Labelled unitless weights, OCR uncertainty and conflicts are exported for review. The script does not estimate weight from appearance or associate weights across separate posts.
-- Model OCR and summaries can contain mistakes; source text, OCR, evidence and Telegram links are retained for verification. An explicit weight without a `weight` label is accepted, so review the context of each match. Each post/album makes one model request, with bounded retries for transient failures; a full history scan may take time and incur API costs. Images or albums exceeding the configured size limits, API refusals and parsing failures are recorded as failures rather than silently skipped.
-- Successful analyses are cached locally by content and API/model settings. Rerunning re-reads Telegram history, reuses unchanged cached analyses, retries failures, and recalculates matches for the current threshold. It rebuilds reports for the current scan range, so use different output directories to keep separate reports. Cache files may retain older content. The output directory is locked while scanning; after an interrupted process, remove `.scan.lock` only after confirming that process has stopped.
-- This read-only command uses `--dry-run` to list channels only; the configuration's `dry_run` setting applies to the existing Telegram-mutating commands. `--help` explains the scan options without logging in.
+Scan settings use **CLI flags > shell environment > .env**, with safe technical defaults for optional settings. `TELEGRAM_SCAN_FOLDER` is required. Existing `TELEGRAM_SCAN_BELOW_JIN` and `TELEGRAM_SCAN_REQUEST_TIMEOUT_MS` values are reserved for a later, explicitly requested analysis stage and are ignored by `scan`; `--below` is rejected.
 
-Default output directory: `weight-scan/` (gitignored). Custom output directories should also be excluded from version control.
+| Environment variable | Example | Purpose |
+| --- | --- | --- |
+| `TELEGRAM_SCAN_FOLDER` | `小姐` | Exact folder name (required) |
+| `TELEGRAM_SCAN_LIMIT` | `0` | Messages per channel; zero means all accessible history |
+| `TELEGRAM_SCAN_SINCE` | empty | Optional ISO date/time cutoff |
+| `TELEGRAM_SCAN_OUTPUT` | `weight-scan` | Output directory |
+| `TELEGRAM_SCAN_EXPORT_FILE` | `folder-content.json` | JSON filename relative to the output directory, or an absolute JSON path |
+| `TELEGRAM_SCAN_DRY_RUN` | `false` | `true` only lists channels |
+| `TELEGRAM_SCAN_IMAGE_MAX_MIB` | `15` | Maximum single-image size in MiB |
+| `TELEGRAM_SCAN_ALBUM_MAX_MIB` | `40` | Maximum retained image size per post/album in MiB |
+| `TELEGRAM_SCAN_DOWNLOAD_TIMEOUT_MS` | `60000` | Timeout for downloading each image, in milliseconds |
 
-| File | Content |
-| --- | --- |
-| `matches.md` | Readable matching posts: summary, original text, OCR, weight and source links |
-| `matches.jsonl` | Matching records with structured weight evidence |
-| `analysis.jsonl` | All scanned posts, including excluded, unknown, review and failed records |
-| `review.jsonl` | Ambiguous weights, uncertain OCR and failed analyses |
-| `summary.json` | Scan range, counts, errors and `complete` flag, checkpointed during the scan |
-| `cache/` | Validated model outputs, reused on subsequent runs |
+The default export is `weight-scan/folder-content.json`, which is gitignored. Custom output paths should also be excluded from version control. The export has `stage: "collected"`, `nextStep: "awaiting_user"`, a `records` array, scan statistics, errors and a `complete` flag.
 
-The command exits with a failure status if any channel or analysis fails. Partial reports are retained; `complete: true` indicates the requested range was processed without execution errors, including posts still needing human review. It does not certify OCR accuracy. Deleted, inaccessible or history-hidden messages cannot be retrieved. For Chinese usage notes, see [README.zh-CN.md](README.zh-CN.md).
+- Deduplication compares the complete merged text of each post/album after NFKC Unicode normalization and collapsing whitespace. It is an exact comparison after normalization, without fuzzy matching, OCR or image comparison. Distinct nonblank text remains distinct even when pictures are identical. Picture-only posts with no text are retained separately.
+- Repeated text is stored once with all occurrences in `sources`, preserving channel IDs/titles, message IDs, dates and links. The first encountered copy supplies the retained text and images; alternative pictures in duplicates are not downloaded. An album is one logical post; independent messages are not concatenated.
+- Video messages are skipped entirely, including their captions. Round videos, animations, and documents with a `video/*` MIME type are also skipped. A mixed album retains its other text and images. Photo attachments and image documents are exported; other media are not downloaded, but their message text can still be retained.
+- Images are written as `base64` with `mimeType`, `byteLength`, `sha256` and `messageId`. Image checksums are for file integrity and do not affect deduplication. All channels are deduplicated before any images are downloaded. The JSON is written incrementally to avoid retaining every Base64 image in memory. Content metadata and source references remain in memory until export finishes.
+- `--limit` applies per channel; a complete boundary album can exceed the limit/date cutoff. Dates use UTC; timestamps must include a timezone, e.g. `2026-11-01T00:00:00+08:00`. The current scan range is recorded in the export.
+- Only channels currently belonging to the folder, including pinned channels, are selected. The script does not join channels, follow channel links, modify folders, send messages or mark them as read. Inaccessible, hidden and deleted history cannot be retrieved.
+- Channel or image errors are retained in JSON with `complete: false`, and the process exits with a failure status. A complete result means the requested accessible range and retained images were exported without errors. Every run re-reads history and re-downloads retained images; it does not reuse model-analysis caches.
+- A temporary file is atomically renamed to the final path after export; older exports remain available until then. A neighboring `.json.lock` file prevents concurrent writes to the same export. After an interrupted process, confirm it has stopped before removing its stale lock. A temporary file left by interruption is not a complete JSON export.
+
+For Chinese instructions, see [README.zh-CN.md](README.zh-CN.md).
 
 Verification:
 
