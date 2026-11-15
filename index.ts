@@ -14,6 +14,7 @@ import { collectDialogs, collectDialogsWithState, createTelegramClient, startTel
 import { collectUnfiledDialogs, writeUnfiledDialogs } from "./src/unfiled.js";
 import { scanFolderContents } from "./src/folder-scan.js";
 import { loadEnvironment } from "./src/env.js";
+import { jsonToMarkdown } from "./src/json-to-markdown.js";
 
 async function exportSnapshot(): Promise<void> {
   const config = await loadConfig();
@@ -227,6 +228,9 @@ async function main(): Promise<void> {
   const command = commandAndPositionals().command;
 
   switch (command) {
+    case "json-to-markdown":
+      await jsonToMarkdown(process.argv.slice(3));
+      return;
     case "scan":
     case "scan-folder-weight":
       await scanFolderContents(process.argv.slice(3));
@@ -268,7 +272,7 @@ async function main(): Promise<void> {
       await runWorkflow();
       return;
     default:
-      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, file-unfiled, archive-folder, sync-private-folder, clear-private-folder, purge-deleted-users, scan, scan-folder-weight, run`);
+      throw new Error(`不支持的命令: ${command}。可用命令: snapshot, classify, folders, unfiled, folder-stats, folder-overlaps, file-unfiled, archive-folder, sync-private-folder, clear-private-folder, purge-deleted-users, scan, scan-folder-weight, json-to-markdown, run`);
   }
 }
 

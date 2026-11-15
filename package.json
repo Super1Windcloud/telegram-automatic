@@ -22,6 +22,8 @@
     "purge-deleted-users": "tsx index.ts purge-deleted-users",
     "scan-folder-weight": "tsx index.ts scan-folder-weight",
     "scan": "tsx index.ts scan",
+    "json-to-markdown": "tsx index.ts json-to-markdown",
+    "test:markdown": "tsx --test src/json-to-markdown.test.ts",
     "test:weight-scan": "tsx --test src/env.test.ts src/weight-analysis.test.ts src/weight-scan.test.ts src/folder-scan.test.ts",
     "start": "tsx index.ts run",
     "sync-folders": "tsx index.ts run",

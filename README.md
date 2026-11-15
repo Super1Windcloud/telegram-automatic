@@ -74,6 +74,7 @@ npm run clear-private-folder
 npm run clear-private-folder -- --dry-run
 npm run purge-deleted-users
 npm run scan -- --dry-run
+npm run json-to-markdown
 npm run run
 ```
 
@@ -91,6 +92,7 @@ Command summary:
 - `clear-private-folder`: delete dialogs that belong only to the `私聊` folder. Dialogs that also belong to another custom folder are skipped. Pass `--dry-run` to preview, or `--no-dry-run` to execute even when `dry_run` is true in the config file. The same flags apply to the other mutating commands.
 - `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated
 - `scan`: collect and deduplicate folder content, export JSON, then stop; `scan-folder-weight` is a compatibility alias
+- `json-to-markdown`: convert exported JSON text to Markdown locally, retaining source links and omitting image data
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.
@@ -144,6 +146,24 @@ Verification:
 ```powershell
 npm run typecheck
 npm run test:weight-scan
+```
+
+## JSON text to Markdown
+
+```powershell
+# Convert scan output to a Markdown file in the same directory
+npm run json-to-markdown
+
+# Explicit paths
+npm run json-to-markdown -- --input weight-scan/folder-content.json --output weight-scan/content.md
+```
+
+The default input follows `TELEGRAM_SCAN_OUTPUT` and `TELEGRAM_SCAN_EXPORT_FILE`; the default output replaces the input extension with `.md`. Optional `.env` settings `TELEGRAM_MARKDOWN_INPUT` and `TELEGRAM_MARKDOWN_OUTPUT` override those paths, and CLI `--input` / `--output` take precedence.
+
+The converter reads `records[].text`, preserving text order, line breaks and all available source channel/date/links. Blank text records are skipped. Images and Base64 data are not embedded. An incomplete source export is labelled as such in the Markdown. Input must contain a `records` array with string `text` fields; output cannot overwrite the input JSON. Conversion is entirely local and does not run Telegram collection, OCR, summaries or weight filtering.
+
+```powershell
+npm run test:markdown
 ```
 
 ## Notes

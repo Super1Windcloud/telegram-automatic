@@ -46,9 +46,26 @@ TELEGRAM_SCAN_DOWNLOAD_TIMEOUT_MS=60000
 - 仅采集文件夹中的频道，不扫描群聊/机器人，不跟随其他频道链接，不修改 Telegram 数据。已删除、无权限或隐藏的历史无法读取。每次运行重新读取历史和下载保留图片，不复用之前的模型缓存。
 - 写入完成后用临时文件原子替换目标文件，扫描期间有相邻的 `.json.lock` 锁。异常中断后应确认进程已停止再删除旧锁；残留临时文件不代表完整 JSON。
 
+## JSON 文字转换为 Markdown
+
+```powershell
+# 默认读取扫描结果，在同目录生成同名 .md 文件
+npm run json-to-markdown
+
+# 自定义输入、输出路径
+npm run json-to-markdown -- --input weight-scan/folder-content.json --output weight-scan/content.md
+```
+
+默认输入继承 `TELEGRAM_SCAN_OUTPUT` 和 `TELEGRAM_SCAN_EXPORT_FILE`，默认输出将输入扩展名改为 `.md`。也可以在 `.env` 中设置 `TELEGRAM_MARKDOWN_INPUT` 和 `TELEGRAM_MARKDOWN_OUTPUT`，命令行 `--input` / `--output` 优先。
+
+仅转换 `records[].text`，保持内容顺序和原文换行，保留所有来源频道、时间及链接；空文字条目跳过，图片及 Base64 不嵌入 Markdown。原始 JSON 的 `complete` 为 false 时会在文档中注明采集未完成。输入必须包含带字符串 `text` 字段的 `records` 数组，输出路径不能覆盖输入 JSON。
+
+转换完全离线，不重新采集、不调用 Telegram、OCR 或模型，也不做体重筛选。
+
 ## 验证
 
 ```powershell
 npm run typecheck
 npm run test:weight-scan
+npm run test:markdown
 ```
