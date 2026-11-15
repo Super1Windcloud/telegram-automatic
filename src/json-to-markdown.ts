@@ -16,11 +16,14 @@ export function readMarkdownOptions(argv: string[], environment: NodeJS.ProcessE
   let output = environment.TELEGRAM_MARKDOWN_OUTPUT?.trim();
   let assetsDirectory = environment.TELEGRAM_MARKDOWN_ASSETS_DIR?.trim();
   let width = environment.TELEGRAM_MARKDOWN_IMAGE_WIDTH?.trim() || "120";
+  let requireImages = environment.TELEGRAM_MARKDOWN_REQUIRE_IMAGES?.trim() || "true";
   let help = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--") continue;
     if (arg === "--help") { help = true; continue; }
+    if (arg === "--images-only") { requireImages = "true"; continue; }
+    if (arg === "--include-text-only") { requireImages = "false"; continue; }
     if (!["--input", "--output", "--assets-dir", "--image-width"].includes(arg)) throw new Error(`未知转换参数: ${arg}`);
     const value = argv[++i];
     if (!value?.trim() || value.startsWith("--")) throw new Error(`${arg} 缺少路径。`);
@@ -34,7 +37,8 @@ export function readMarkdownOptions(argv: string[], environment: NodeJS.ProcessE
   if (input.toLowerCase() === output.toLowerCase()) throw new Error("Markdown 输出路径不能与输入 JSON 相同。");
   if (![".md", ".markdown"].includes(extname(output).toLowerCase())) throw new Error("输出文件必须使用 .md 或 .markdown 扩展名。");
   assetsDirectory = resolve(dirname(output), assetsDirectory || `${basename(output, extname(output))}.assets`);
-  return { input, output, assetsDirectory, imageWidth: imageWidth(width), help };
+  if (!["true", "false"].includes(requireImages)) throw new Error("TELEGRAM_MARKDOWN_REQUIRE_IMAGES 必须是 true 或 false。");
+  return { input, output, assetsDirectory, imageWidth: imageWidth(width), requireImages: requireImages === "true", help };
 }
 
 function inline(value: string): string {
@@ -62,7 +66,7 @@ function imageAsset(value: unknown, context: string): MarkdownAsset {
   return { fileName: `${hash}.${extension}`, bytes };
 }
 
-export function renderContentMarkdown(payload: unknown, imageUrlPrefix = "images", width = 120) {
+export function renderContentMarkdown(payload: unknown, imageUrlPrefix = "images", width = 120, requireImages = true) {
   const thumbnailWidth = imageWidth(width);
   if (!payload || typeof payload !== "object" || !("records" in payload) || !Array.isArray(payload.records)) {
     throw new Error("输入 JSON 缺少 records 数组，请使用 scan 导出的 JSON。");
@@ -82,22 +86,22 @@ export function renderContentMarkdown(payload: unknown, imageUrlPrefix = "images
       const url = htmlAttribute(`${imageUrlPrefix}/${asset.fileName}`);
       return `<a href="${url}"><img src="${url}" alt="图片 ${imageIndex + 1}" width="${thumbnailWidth}" loading="lazy"></a>`;
     });
-    if (!row.text.trim() && !images.length) { skipped += 1; continue; }
+    if (!images.length && (requireImages || !row.text.trim())) { skipped += 1; continue; }
     const text = row.text.trim() ? row.text.split(/\r\n|\n|\r/).map((line: string) => `> ${line}${line ? "  " : ""}`).join("\n") : "";
     // Zed routes standalone HTML blocks through its image parser, unlike bare inline HTML.
     const gallery = images.length ? `<p>\n${images.join(" ")}\n</p>` : "";
     sections.push([`## ${sections.length + 1}`, text, gallery].filter(Boolean).join("\n\n"));
   }
   const incomplete = "complete" in payload && payload.complete === false ? "> 原始 JSON 标记为未完成采集，本文仅包含其中已导出的内容。\n\n" : "";
-  const markdown = `# ${inline(folder)} · 消息内容\n\n${incomplete}共 ${payload.records.length} 条内容，导出 ${sections.length} 条内容、${imageCount} 张图片，跳过 ${skipped} 条空内容。\n\n${sections.join("\n\n---\n\n")}\n`;
+  const markdown = `# ${inline(folder)} · 消息内容\n\n${incomplete}共 ${payload.records.length} 条内容，导出 ${sections.length} 条${requireImages ? "带图片的" : ""}内容、${imageCount} 张图片，跳过 ${skipped} 条内容。\n\n${sections.join("\n\n---\n\n")}\n`;
   return { markdown, exported: sections.length, skipped, imageCount, assets: [...assets.values()] };
 }
 
-export async function writeContentMarkdown(payload: unknown, options: { output: string; assetsDirectory: string; imageWidth?: number }) {
+export async function writeContentMarkdown(payload: unknown, options: { output: string; assetsDirectory: string; imageWidth?: number; requireImages?: boolean }) {
   const assetPath = relative(dirname(options.output), options.assetsDirectory);
   if (isAbsolute(assetPath)) throw new Error("图片目录必须与 Markdown 位于同一驱动器，以生成相对图片链接。");
   const prefix = assetPath.split(sep).map((part) => encodeURIComponent(part).replace(/\(/g, "%28").replace(/\)/g, "%29")).join("/") || ".";
-  const result = renderContentMarkdown(payload, prefix, options.imageWidth);
+  const result = renderContentMarkdown(payload, prefix, options.imageWidth, options.requireImages);
   await mkdir(dirname(options.output), { recursive: true });
   if (result.assets.length) await mkdir(options.assetsDirectory, { recursive: true });
   for (const asset of result.assets) await writeFile(resolve(options.assetsDirectory, asset.fileName), asset.bytes);
@@ -109,10 +113,10 @@ export async function jsonToMarkdown(argv: string[]): Promise<void> {
   loadEnvironment();
   const options = readMarkdownOptions(argv);
   if (options.help) {
-    console.log("npm run json-to-markdown -- [--input <JSON路径>] [--output <Markdown路径>] [--assets-dir <图片目录>] [--image-width <像素>]\n默认读取扫描 JSON，生成同名 .md 和 .assets 图片目录；使用 TELEGRAM_MARKDOWN_* 配置路径和缩略图宽度。\n图片默认宽 120px，使用兼容 Zed 的独立 HTML 段落紧凑排列、自动换行，点击查看原图；阅读器需支持 HTML 块。仅导出图文，不显示来源，不调用 Telegram、OCR 或模型。");
+    console.log("npm run json-to-markdown -- [--input <JSON路径>] [--output <Markdown路径>] [--assets-dir <图片目录>] [--image-width <像素>] [--include-text-only | --images-only]\n默认只保留带图片条目；TELEGRAM_MARKDOWN_REQUIRE_IMAGES=false 或 --include-text-only 可保留纯文字。使用 TELEGRAM_MARKDOWN_* 配置路径和宽度。\n图片默认宽 120px，使用兼容 Zed 的独立 HTML 段落紧凑排列、自动换行，点击查看原图；阅读器需支持 HTML 块。不显示来源，不调用 Telegram、OCR 或模型。");
     return;
   }
   const payload: unknown = JSON.parse(await readFile(options.input, "utf8"));
   const result = await writeContentMarkdown(payload, options);
-  console.log(`已转换 ${result.exported} 条内容、${result.imageCount} 张图片（${result.assets.length} 个图片文件），跳过 ${result.skipped} 条空内容；输出：${options.output}\n图片目录：${options.assetsDirectory}`);
+  console.log(`已转换 ${result.exported} 条内容、${result.imageCount} 张图片（${result.assets.length} 个图片文件），跳过 ${result.skipped} 条内容；输出：${options.output}\n图片目录：${options.assetsDirectory}`);
 }

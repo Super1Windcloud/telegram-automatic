@@ -30,7 +30,7 @@ test("text and image-only posts render images without source metadata or inline 
 });
 
 test("incomplete and malformed text is handled explicitly while unused sources are omitted", () => {
-  const result = renderContentMarkdown({ complete: false, records: [{ text: "保留", sources: [
+  const result = renderContentMarkdown({ complete: false, records: [{ text: "保留", images: [image], sources: [
     { channelTitle: "[伪链接](bad)", links: ["javascript:alert(1)", "https://t.me/test/(1)"] },
   ] }] });
   assert.ok(result.markdown.includes("未完成采集"));
@@ -48,6 +48,11 @@ test("input defaults follow scan output; environment and CLI paths override defa
   assert.equal(defaults.output, resolve("custom/export.md"));
   assert.equal(defaults.assetsDirectory, resolve("custom/export.assets"));
   assert.equal(defaults.imageWidth, 120);
+  assert.equal(defaults.requireImages, true);
+  assert.equal(readMarkdownOptions([], { TELEGRAM_MARKDOWN_REQUIRE_IMAGES: "false" }).requireImages, false);
+  assert.equal(readMarkdownOptions(["--images-only"], { TELEGRAM_MARKDOWN_REQUIRE_IMAGES: "false" }).requireImages, true);
+  assert.equal(readMarkdownOptions(["--include-text-only"], {}).requireImages, false);
+  assert.throws(() => readMarkdownOptions([], { TELEGRAM_MARKDOWN_REQUIRE_IMAGES: "yes" }));
   assert.equal(readMarkdownOptions([], { TELEGRAM_MARKDOWN_IMAGE_WIDTH: "96" }).imageWidth, 96);
   assert.equal(readMarkdownOptions(["--image-width", "80"], { TELEGRAM_MARKDOWN_IMAGE_WIDTH: "96" }).imageWidth, 80);
   for (const width of ["0", "-1", "12.5", "100px", "NaN"]) assert.throws(() => readMarkdownOptions(["--image-width", width], {}));
@@ -62,6 +67,22 @@ test("input defaults follow scan output; environment and CLI paths override defa
   assert.throws(() => readMarkdownOptions(["--output", "out.txt"], {}));
   assert.throws(() => readMarkdownOptions(["--input"], {}));
   assert.throws(() => readMarkdownOptions(["--unknown"], {}));
+});
+
+test("image filtering drops text-only records, keeps image-only records and renumbers sections", () => {
+  const payload = { records: [{ text: "纯文字不应导出", images: [] }, { text: "保留图文", images: [image] },
+    { text: "", images: [image] }, { text: "", images: [] }] };
+  const filtered = renderContentMarkdown(payload);
+  assert.equal(filtered.exported, 2);
+  assert.equal(filtered.skipped, 2);
+  assert.equal(filtered.imageCount, 2);
+  assert.equal(filtered.markdown.includes("纯文字不应导出"), false);
+  assert.ok(filtered.markdown.includes("保留图文"));
+  assert.deepEqual([...filtered.markdown.matchAll(/^## (\d+)$/gm)].map((match) => Number(match[1])), [1, 2]);
+  const unfiltered = renderContentMarkdown(payload, "images", 120, false);
+  assert.equal(unfiltered.exported, 3);
+  assert.equal(unfiltered.skipped, 1);
+  assert.ok(unfiltered.markdown.includes("纯文字不应导出"));
 });
 
 test("invalid image data and mismatched checksums are rejected", () => {

@@ -76,13 +76,15 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 
 转换 `records[].text` 和 `records[].images`，保持内容顺序和原文换行；Markdown 不显示来源频道、时间或链接，来源仍保留在输入 JSON 中。Base64 图片会解码到 Markdown 旁的同名 `.assets/` 目录。同一条内容中的图片在一个段落内并排排列，空间不足时自动换行，默认宽 120px，保持比例、不裁剪，点击缩略图可查看原图。此排版需要 Markdown 阅读器支持内嵌 HTML 图片。
 
-缩略图宽度可在 `.env` 中设置 `TELEGRAM_MARKDOWN_IMAGE_WIDTH=120`，或通过 `--image-width 96` 临时覆盖。纯图片条目也会保留，只有既无文字又无图片的条目才跳过。移动或分享 Markdown 时，需要同时携带图片目录。
+缩略图宽度可在 `.env` 中设置 `TELEGRAM_MARKDOWN_IMAGE_WIDTH=120`，或通过 `--image-width 96` 临时覆盖。纯图片条目也会保留，默认跳过没有图片的条目。移动或分享 Markdown 时，需要同时携带图片目录。
 
 为兼容 Zed，每组图片放在独立的 `<p>` HTML 块内，开始和结束标签各占一行，内部不插入空行。Zed 1.28.1 对 HTML 块与行内 HTML 使用不同解析路径，裸写 `<a><img></a>` 可能显示为标签文本（[上游问题](https://github.com/zed-industries/zed/issues/65751)）。手动编辑时请保留段落容器；宽度配置和原图文件不受影响。
 
 图片目录可通过 `.env` 的 `TELEGRAM_MARKDOWN_ASSETS_DIR` 或 `--assets-dir` 指定；相对目录以 Markdown 所在目录为基准，图片和 Markdown 必须位于同一驱动器。例如默认生成 `weight-scan/folder-content.md` 和 `weight-scan/folder-content.assets/`。
 
 支持 JPEG、PNG、WebP、GIF、BMP、AVIF、SVG。会校验 Base64 及原始 JSON 中可选的 SHA-256、字节数；图片数据损坏时转换报错。同类型、同内容的图片复用一个文件，但不会合并消息或减少图片引用；重跑不会删除旧图片文件。
+
+默认启用 `TELEGRAM_MARKDOWN_REQUIRE_IMAGES=true`，Markdown 只保留带图片的内容，过滤纯文字条目并重新连续编号；不会修改输入 JSON。设置为 `false` 或使用 `--include-text-only` 可保留纯文字，`--images-only` 可强制启用图片筛选。
 
 原始 JSON 的 `complete` 为 false 时会在文档中注明采集未完成。输入必须包含带字符串 `text` 字段的 `records` 数组，输出路径不能覆盖输入 JSON。
 
