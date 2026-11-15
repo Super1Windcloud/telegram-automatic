@@ -96,7 +96,7 @@ function responseText(raw: unknown, style: "chat" | "responses"): string {
 }
 
 export async function analyzeContent(
-  config: OpenAiConfig, texts: SourceText[], images: ImageInput[], request: typeof fetch = fetch,
+  config: OpenAiConfig, texts: SourceText[], images: ImageInput[], request: typeof fetch = fetch, timeoutMs = 120_000,
 ): Promise<Analysis> {
   const styles: Array<"chat" | "responses"> = config.apiStyle === "auto" ? ["chat", "responses"] : [config.apiStyle];
   const base = config.baseUrl.replace(/\/+$/, "").replace(/\/(?:chat\/completions|responses)$/, "");
@@ -119,7 +119,7 @@ export async function analyzeContent(
       try {
         response = await request(`${root}/${style === "chat" ? "chat/completions" : "responses"}`, {
           method: "POST", headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify(payload), signal: AbortSignal.timeout(120_000),
+          body: JSON.stringify(payload), signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (error) {
         const cause = error instanceof Error ? error.cause : undefined;

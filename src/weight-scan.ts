@@ -3,41 +3,71 @@ import { appendFile, mkdir, open, readFile, rename, unlink, writeFile } from "no
 import { resolve, join } from "node:path";
 import type { Message, TelegramClient, tl } from "@mtcute/node";
 import { loadConfig } from "./config.js";
+import { loadEnvironment } from "./env.js";
 import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
 import { collectDialogsWithState, createTelegramClient, inputPeerKey, startTelegramClient, type CollectedDialog } from "./telegram.js";
 import { ANALYSIS_PROMPT, analyzeContent, decideWeight, parseAnalysis, type Analysis, type ImageInput, type WeightDecision } from "./weight-analysis.js";
 
-export type ScanOptions = { folder: string; limit: number; below: number; since?: Date; output: string; dryRun: boolean; help: boolean };
+export type ScanOptions = {
+  folder: string; limit: number; below: number; since?: Date; output: string; dryRun: boolean; help: boolean;
+  maxImageBytes: number; maxAlbumBytes: number; requestTimeoutMs: number;
+};
 
-export function readScanOptions(argv: string[]): ScanOptions {
-  const options: ScanOptions = { folder: "小姐", limit: 0, below: 95, output: resolve("weight-scan"), dryRun: false, help: false };
+function positiveNumber(value: string, name: string): number {
+  if (!/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) <= 0) throw new Error(`${name} 必须是正数。`);
+  return Number(value);
+}
+
+export function readScanOptions(argv: string[], environment: NodeJS.ProcessEnv = process.env): ScanOptions {
+  const values = {
+    folder: environment.TELEGRAM_SCAN_FOLDER?.trim() ?? "",
+    limit: environment.TELEGRAM_SCAN_LIMIT?.trim() || "0",
+    below: environment.TELEGRAM_SCAN_BELOW_JIN?.trim() ?? "",
+    since: environment.TELEGRAM_SCAN_SINCE?.trim() ?? "",
+    output: environment.TELEGRAM_SCAN_OUTPUT?.trim() || "weight-scan",
+    dryRun: environment.TELEGRAM_SCAN_DRY_RUN?.trim() || "false",
+  };
+  const help = argv.includes("--help");
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === "--") continue;
-    if (arg === "--dry-run" || arg === "--dry-run=true") { options.dryRun = true; continue; }
-    if (arg === "--no-dry-run" || arg === "--dry-run=false") { options.dryRun = false; continue; }
-    if (arg === "--help") { options.help = true; continue; }
+    if (arg === "--" || arg === "--help") continue;
+    if (arg === "--dry-run" || arg === "--dry-run=true") { values.dryRun = "true"; continue; }
+    if (arg === "--no-dry-run" || arg === "--dry-run=false") { values.dryRun = "false"; continue; }
     if (!["--folder", "--limit", "--below", "--since", "--output"].includes(arg)) throw new Error(`未知扫描参数: ${arg}`);
     const value = argv[++i];
     if (!value?.trim() || value.startsWith("--")) throw new Error(`${arg} 缺少值。`);
     switch (arg) {
-      case "--folder": options.folder = value.trim(); break;
-      case "--limit":
-        if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error("--limit 必须是非负整数，0 表示全部历史。");
-        options.limit = Number(value); break;
-      case "--below":
-        if (!/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) <= 0) throw new Error("--below 必须是正数（斤）。");
-        options.below = Number(value); break;
-      case "--since": {
-        // Dates use UTC; timestamps must include a timezone to avoid machine-dependent ranges.
-        if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?$/.test(value)
-          || Number.isNaN(Date.parse(value)) || new Date(`${value.slice(0, 10)}T00:00:00Z`).toISOString().slice(0, 10) !== value.slice(0, 10)) {
-          throw new Error("--since 需要有效 ISO 日期或含时区时间，例如 2026-11-01 或 2026-11-01T00:00:00+08:00。");
-        }
-        options.since = new Date(value); break;
-      }
-      case "--output": options.output = resolve(value); break;
+      case "--folder": values.folder = value.trim(); break;
+      case "--limit": values.limit = value; break;
+      case "--below": values.below = value; break;
+      case "--since": values.since = value; break;
+      case "--output": values.output = value; break;
     }
+  }
+  // Help must remain available before .env has been configured.
+  if (help) return { folder: "", below: 0, limit: 0, output: resolve(values.output), dryRun: false, help: true,
+    maxImageBytes: 0, maxAlbumBytes: 0, requestTimeoutMs: 0 };
+  if (!values.folder) throw new Error("缺少 TELEGRAM_SCAN_FOLDER，请填写 .env 或使用 --folder。");
+  if (!values.below) throw new Error("缺少 TELEGRAM_SCAN_BELOW_JIN，请填写 .env 或使用 --below。");
+  if (!/^\d+$/.test(values.limit) || !Number.isSafeInteger(Number(values.limit))) throw new Error("TELEGRAM_SCAN_LIMIT / --limit 必须是非负整数，0 表示全部历史。");
+  if (!["true", "false"].includes(values.dryRun)) throw new Error("TELEGRAM_SCAN_DRY_RUN 必须是 true 或 false。");
+  const options: ScanOptions = {
+    folder: values.folder, limit: Number(values.limit), below: positiveNumber(values.below, "TELEGRAM_SCAN_BELOW_JIN / --below"),
+    output: resolve(values.output), dryRun: values.dryRun === "true", help: false,
+    maxImageBytes: positiveNumber(environment.TELEGRAM_SCAN_IMAGE_MAX_MIB?.trim() || "15", "TELEGRAM_SCAN_IMAGE_MAX_MIB") * 1024 * 1024,
+    maxAlbumBytes: positiveNumber(environment.TELEGRAM_SCAN_ALBUM_MAX_MIB?.trim() || "40", "TELEGRAM_SCAN_ALBUM_MAX_MIB") * 1024 * 1024,
+    requestTimeoutMs: positiveNumber(environment.TELEGRAM_SCAN_REQUEST_TIMEOUT_MS?.trim() || "120000", "TELEGRAM_SCAN_REQUEST_TIMEOUT_MS"),
+  };
+  if (!Number.isInteger(options.requestTimeoutMs) || options.requestTimeoutMs > 2_147_483_647) throw new Error("TELEGRAM_SCAN_REQUEST_TIMEOUT_MS 必须是 1 到 2147483647 的整数。");
+  if (!Number.isSafeInteger(options.maxImageBytes) || !Number.isSafeInteger(options.maxAlbumBytes)) throw new Error("图片大小配置换算后的字节数必须是安全整数。");
+  if (values.since) {
+    const value = values.since;
+    // Dates use UTC; timestamps must include a timezone to avoid machine-dependent ranges.
+    if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?$/.test(value)
+      || Number.isNaN(Date.parse(value)) || new Date(`${value.slice(0, 10)}T00:00:00Z`).toISOString().slice(0, 10) !== value.slice(0, 10)) {
+      throw new Error("TELEGRAM_SCAN_SINCE / --since 需要有效 ISO 日期或含时区时间，例如 2026-11-01 或 2026-11-01T00:00:00+08:00。");
+    }
+    options.since = new Date(value);
   }
   return options;
 }
@@ -71,7 +101,7 @@ type ScanRecord = {
   unsupportedMedia: string[]; error?: string;
 };
 
-async function collectImages(client: TelegramClient, post: Message[]): Promise<ImageInput[]> {
+async function collectImages(client: TelegramClient, post: Message[], options: ScanOptions): Promise<ImageInput[]> {
   const images: ImageInput[] = [];
   let totalBytes = 0;
   for (const message of post) {
@@ -79,10 +109,10 @@ async function collectImages(client: TelegramClient, post: Message[]): Promise<I
     if (!media || (media.type !== "photo" && !(media.type === "document" && media.mimeType.startsWith("image/")))) continue;
     const mime = media.type === "photo" ? "image/jpeg" : media.mimeType;
     if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) throw new Error(`图片 ${message.id} 不支持 ${mime}，请人工核对。`);
-    if (media.fileSize !== undefined && media.fileSize > 15 * 1024 * 1024) throw new Error(`图片 ${message.id} 超过 15 MiB。`);
+    if (media.fileSize !== undefined && media.fileSize > options.maxImageBytes) throw new Error(`图片 ${message.id} 超过配置的单图大小限制。`);
     const bytes = await client.downloadAsBuffer(media);
     totalBytes += bytes.byteLength;
-    if (bytes.byteLength > 15 * 1024 * 1024 || totalBytes > 40 * 1024 * 1024) throw new Error("单图或相册超过图片大小限制。");
+    if (bytes.byteLength > options.maxImageBytes || totalBytes > options.maxAlbumBytes) throw new Error("单图或相册超过配置的图片大小限制。");
     images.push({ messageId: message.id, dataUrl: `data:${mime};base64,${Buffer.from(bytes).toString("base64")}` });
   }
   return images;
@@ -105,9 +135,10 @@ function markdownRecord(record: ScanRecord): string {
 }
 
 export async function scanFolderWeight(argv: string[]): Promise<void> {
+  loadEnvironment();
   const options = readScanOptions(argv);
   if (options.help) {
-    console.log("npm run scan-folder-weight -- [--folder 小姐] [--limit 0] [--below 95] [--since 2026-11-01] [--output weight-scan] [--dry-run]\n--limit 为每频道消息数，0=全部可访问历史；同一相册总是完整读取。--dry-run 只列频道，不读取消息或调用模型。\n文字及图片会提交至配置的模型接口；需要支持图片输入的模型。结果保存在本地，不修改 Telegram 数据。");
+    console.log("npm run scan-folder-weight -- [--folder <名称>] [--limit <条数>] [--below <斤>] [--since <ISO日期>] [--output <目录>] [--dry-run]\n从 .env 加载 TELEGRAM_SCAN_* 配置，文件夹和体重阈值必填；命令行可覆盖。--limit=0 表示全部历史，相册完整读取。--dry-run 只列频道。\n文字及图片会提交至配置的模型接口；需要支持图片输入的模型。结果保存在本地，不修改 Telegram 数据。");
     return;
   }
   const config = await loadConfig();
@@ -169,7 +200,7 @@ export async function runScan(
               record.analysis = parseAnalysis(cached, imageIds);
               stats.cached += 1;
             } else if (texts.length || imageIds.length) {
-              record.analysis = await analyzeContent(api, texts, await collectImages(client, post));
+              record.analysis = await analyzeContent(api, texts, await collectImages(client, post, options), fetch, options.requestTimeoutMs);
               await atomicJson(cachePath, record.analysis);
             } else {
               record.analysis = { summary: "无文字或可识别静态图片，未分析视频、音频和其他媒体。", ocr: [] };

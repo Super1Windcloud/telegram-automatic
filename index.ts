@@ -13,6 +13,7 @@ import { readSnapshot, writeSnapshot } from "./src/snapshot.js";
 import { collectDialogs, collectDialogsWithState, createTelegramClient, startTelegramClient } from "./src/telegram.js";
 import { collectUnfiledDialogs, writeUnfiledDialogs } from "./src/unfiled.js";
 import { scanFolderWeight } from "./src/weight-scan.js";
+import { loadEnvironment } from "./src/env.js";
 
 async function exportSnapshot(): Promise<void> {
   const config = await loadConfig();
@@ -217,6 +218,7 @@ async function runWorkflow(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  loadEnvironment();
   const dryRunFlag = readDryRunFlag();
   if (dryRunFlag !== undefined) {
     console.log(`dry_run: ${dryRunFlag}（命令行参数）`);

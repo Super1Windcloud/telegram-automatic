@@ -21,7 +21,7 @@
     "clear-private-folder": "tsx index.ts clear-private-folder",
     "purge-deleted-users": "tsx index.ts purge-deleted-users",
     "scan-folder-weight": "tsx index.ts scan-folder-weight",
-    "test:weight-scan": "tsx --test src/weight-analysis.test.ts src/weight-scan.test.ts",
+    "test:weight-scan": "tsx --test src/env.test.ts src/weight-analysis.test.ts src/weight-scan.test.ts",
     "start": "tsx index.ts run",
     "sync-folders": "tsx index.ts run",
     "typecheck": "tsc -p tsconfig.json"

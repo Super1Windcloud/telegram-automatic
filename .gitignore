@@ -23,3 +23,7 @@ $dir/
 
 weight-scan/
 
+.env
+.env.*
+!.env.example
+

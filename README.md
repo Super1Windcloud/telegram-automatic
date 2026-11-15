@@ -17,6 +17,12 @@ Utilities for exporting Telegram dialogs, classifying them with an OpenAI-compat
 
 ## Configuration
 
+Commands automatically load `.env` from the working directory, using Node.js 20.12+ built-in environment parsing. Existing shell environment variables take precedence over `.env`. Copy `.env.example` to `.env` for scan settings; `.env` and local `.env.*` files are gitignored, while `.env.example` is committed.
+
+```powershell
+Copy-Item .env.example .env
+```
+
 The app looks for `folder_rules.json` first and also supports `telegram-folders.config.json` for compatibility.
 
 Create a config file from the example:
@@ -92,6 +98,20 @@ Command summary:
 
 ## Folder weight scan
 
+The folder name and weight threshold are required settings, read from `TELEGRAM_SCAN_FOLDER` and `TELEGRAM_SCAN_BELOW_JIN` in `.env`, or supplied through `--folder` and `--below`. Neither business value is hardcoded in the scanner. Priority for scan options: **CLI flags > shell environment > `.env`**. Other scan options retain safe technical defaults when omitted.
+
+| Environment variable | Value in `.env.example` | Purpose |
+| --- | --- | --- |
+| `TELEGRAM_SCAN_FOLDER` | `小姐` | Exact Telegram folder title (required) |
+| `TELEGRAM_SCAN_BELOW_JIN` | `95` | Exclusive weight threshold, in jin (required) |
+| `TELEGRAM_SCAN_LIMIT` | `0` | Messages per channel; zero means all accessible history |
+| `TELEGRAM_SCAN_SINCE` | empty | Optional ISO date/time cutoff |
+| `TELEGRAM_SCAN_OUTPUT` | `weight-scan` | Report and cache directory |
+| `TELEGRAM_SCAN_DRY_RUN` | `false` | `true` lists channels only |
+| `TELEGRAM_SCAN_IMAGE_MAX_MIB` | `15` | Maximum size of one image, in MiB |
+| `TELEGRAM_SCAN_ALBUM_MAX_MIB` | `40` | Maximum total image size of an album, in MiB |
+| `TELEGRAM_SCAN_REQUEST_TIMEOUT_MS` | `120000` | Timeout for each model request, in milliseconds |
+
 Uses the existing Telegram user session and `openai` configuration. The model must support image inputs; the script sends message text and images to the configured API. Both Chat Completions and Responses are supported. `api_style: auto` tries Chat first and falls back to Responses only for an unavailable endpoint (404/405). For a custom gateway, set `api_style` explicitly if necessary. Image input follows the [official OpenAI documentation](https://developers.openai.com/api/docs/guides/images-vision).
 
 ```powershell
@@ -101,18 +121,18 @@ npm run scan-folder-weight -- --dry-run
 # Small initial scan: latest 10 messages per channel (complete albums included)
 npm run scan-folder-weight -- --limit 10
 
-# All accessible channel history in the folder named 小姐; strictly below 95 jin
+# All accessible history using the folder and weight threshold configured in .env
 npm run scan-folder-weight
 
 # Optional folder, date, threshold and output directory
 npm run scan-folder-weight -- --folder 小姐 --since 2026-11-01 --below 95 --output weight-scan
 ```
 
-- Defaults: folder `小姐`, threshold **< 95 jin** (95 itself is excluded), no history limit. `--limit 0` means all accessible history; positive limits apply separately to each channel. Complete albums can exceed the limit or extend past the date cutoff. Dates use UTC; timestamps must include a timezone, e.g. `2026-11-01T00:00:00+08:00`.
+- The supplied `.env.example` selects folder `小姐` and threshold **< 95 jin** (95 itself is excluded), with no history limit. Change `.env` to select another folder or threshold. `--limit 0` means all accessible history; positive limits apply separately to each channel. Complete albums can exceed the limit or extend past the date cutoff. Dates use UTC; timestamps must include a timezone, e.g. `2026-11-01T00:00:00+08:00`.
 - Only channels currently belonging to the folder are selected, including pinned channels. Group chats and bots are excluded. The command never joins channels, sends messages, changes folder membership, or marks messages as read. The configured session must already have access to the history.
 - Text and static JPEG/PNG/WebP images are analyzed. Images sent as documents are supported. Each album is summarized together; unrelated posts are kept separate. Videos, audio, stickers, other documents and webpage previews are not OCRed. These omissions are recorded as media types where applicable. The scanner does not follow links to other channels.
 - Weight is determined locally from explicit units in the original text and OCR, independently of the generated summary. `1 kg = 2 jin`; pounds are also converted. Unitless profiles such as `165/90/B`, unreadable text, ranges, qualified values, or conflicting weights are never automatically matched. Labelled unitless weights, OCR uncertainty and conflicts are exported for review. The script does not estimate weight from appearance or associate weights across separate posts.
-- Model OCR and summaries can contain mistakes; source text, OCR, evidence and Telegram links are retained for verification. An explicit weight without a `weight` label is accepted, so review the context of each match. Each post/album makes one model request, with bounded retries for transient failures; a full history scan may take time and incur API costs. Images over 15 MiB, albums over 40 MiB, API refusals and parsing failures are recorded as failures rather than silently skipped.
+- Model OCR and summaries can contain mistakes; source text, OCR, evidence and Telegram links are retained for verification. An explicit weight without a `weight` label is accepted, so review the context of each match. Each post/album makes one model request, with bounded retries for transient failures; a full history scan may take time and incur API costs. Images or albums exceeding the configured size limits, API refusals and parsing failures are recorded as failures rather than silently skipped.
 - Successful analyses are cached locally by content and API/model settings. Rerunning re-reads Telegram history, reuses unchanged cached analyses, retries failures, and recalculates matches for the current threshold. It rebuilds reports for the current scan range, so use different output directories to keep separate reports. Cache files may retain older content. The output directory is locked while scanning; after an interrupted process, remove `.scan.lock` only after confirming that process has stopped.
 - This read-only command uses `--dry-run` to list channels only; the configuration's `dry_run` setting applies to the existing Telegram-mutating commands. `--help` explains the scan options without logging in.
 
