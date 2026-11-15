@@ -95,8 +95,12 @@ test("written Markdown image paths resolve to real files with Chinese names and 
   }
 });
 
-test("thumbnails share one paragraph, use configured width and link to full images", () => {
+test("thumbnails form a standalone HTML block for Zed, keep compact width and link to full images", () => {
   const result = renderContentMarkdown({ records: [{ text: "图文", images: [image, image, image] }] }, "images", 88);
+  const blocks = [...result.markdown.matchAll(/^<p>\n([\s\S]*?)\n<\/p>$/gm)];
+  assert.equal(blocks.length, 1, "Zed parses image groups through its HTML-block renderer");
+  assert.doesNotMatch(blocks[0][1], /\n\s*\n/, "blank lines would end the Markdown HTML block early");
+  assert.equal((blocks[0][1].match(/<img /g) ?? []).length, 3);
   assert.match(result.markdown, /<\/a> <a href=/);
   assert.doesNotMatch(result.markdown, /<\/a>\n\n<a/);
   const thumbnails = [...result.markdown.matchAll(/<a href="([^"]+)"><img src="([^"]+)" alt="图片 (\d+)" width="(\d+)" loading="lazy"><\/a>/g)];

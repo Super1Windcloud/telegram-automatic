@@ -46,6 +46,22 @@ TELEGRAM_SCAN_DOWNLOAD_TIMEOUT_MS=60000
 - 仅采集文件夹中的频道，不扫描群聊/机器人，不跟随其他频道链接，不修改 Telegram 数据。已删除、无权限或隐藏的历史无法读取。每次运行重新读取历史和下载保留图片，不复用之前的模型缓存。
 - 写入完成后用临时文件原子替换目标文件，扫描期间有相邻的 `.json.lock` 锁。异常中断后应确认进程已停止再删除旧锁；残留临时文件不代表完整 JSON。
 
+## 文件夹及各频道消息数量
+
+```powershell
+# 统计 .env 中 TELEGRAM_SCAN_FOLDER 对应文件夹
+npm run message-stats
+
+# 可选：指定文件夹和 JSON 输出路径
+npm run message-stats -- --folder 小姐 --output weight-scan/message-stats.json
+```
+
+终端显示各频道的消息数和文件夹合计，同时输出格式化 JSON。默认路径为 `weight-scan/message-stats.json`，可通过 `TELEGRAM_MESSAGE_STATS_OUTPUT` 指定文件路径；未配置时使用 `TELEGRAM_SCAN_OUTPUT` 目录。命令行参数优先。
+
+统计采用 Telegram 返回的各频道历史消息总数，不使用最大消息 ID 或当前页条数推算。包含视频、重复消息和 Telegram 总数中的服务消息，相册按每条消息计数；不受扫描条数、日期、去重和媒体筛选影响。仅统计文件夹中的频道及当前账号可访问的历史，不下载媒体、不调用模型。已有 `folder-stats` 统计的是会话数，与此命令不同。
+
+各频道分别查询并记录 `queriedAt`，不保证同一时刻的原子快照。失败频道的 `messageCount` 为 null，整体 `totalMessages` 也为 null，已成功统计的数量放在 `knownTotalMessages`；保存 `complete: false` 的部分报告并返回非零状态。空文件夹输出 0。
+
 ## JSON 图文转换为 Markdown
 
 ```powershell
@@ -62,6 +78,8 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 
 缩略图宽度可在 `.env` 中设置 `TELEGRAM_MARKDOWN_IMAGE_WIDTH=120`，或通过 `--image-width 96` 临时覆盖。纯图片条目也会保留，只有既无文字又无图片的条目才跳过。移动或分享 Markdown 时，需要同时携带图片目录。
 
+为兼容 Zed，每组图片放在独立的 `<p>` HTML 块内，开始和结束标签各占一行，内部不插入空行。Zed 1.28.1 对 HTML 块与行内 HTML 使用不同解析路径，裸写 `<a><img></a>` 可能显示为标签文本（[上游问题](https://github.com/zed-industries/zed/issues/65751)）。手动编辑时请保留段落容器；宽度配置和原图文件不受影响。
+
 图片目录可通过 `.env` 的 `TELEGRAM_MARKDOWN_ASSETS_DIR` 或 `--assets-dir` 指定；相对目录以 Markdown 所在目录为基准，图片和 Markdown 必须位于同一驱动器。例如默认生成 `weight-scan/folder-content.md` 和 `weight-scan/folder-content.assets/`。
 
 支持 JPEG、PNG、WebP、GIF、BMP、AVIF、SVG。会校验 Base64 及原始 JSON 中可选的 SHA-256、字节数；图片数据损坏时转换报错。同类型、同内容的图片复用一个文件，但不会合并消息或减少图片引用；重跑不会删除旧图片文件。
@@ -76,4 +94,5 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 npm run typecheck
 npm run test:weight-scan
 npm run test:markdown
+npm run test:message-stats
 ```

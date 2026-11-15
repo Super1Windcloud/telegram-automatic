@@ -84,7 +84,9 @@ export function renderContentMarkdown(payload: unknown, imageUrlPrefix = "images
     });
     if (!row.text.trim() && !images.length) { skipped += 1; continue; }
     const text = row.text.trim() ? row.text.split(/\r\n|\n|\r/).map((line: string) => `> ${line}${line ? "  " : ""}`).join("\n") : "";
-    sections.push([`## ${sections.length + 1}`, text, images.join(" ")].filter(Boolean).join("\n\n"));
+    // Zed routes standalone HTML blocks through its image parser, unlike bare inline HTML.
+    const gallery = images.length ? `<p>\n${images.join(" ")}\n</p>` : "";
+    sections.push([`## ${sections.length + 1}`, text, gallery].filter(Boolean).join("\n\n"));
   }
   const incomplete = "complete" in payload && payload.complete === false ? "> 原始 JSON 标记为未完成采集，本文仅包含其中已导出的内容。\n\n" : "";
   const markdown = `# ${inline(folder)} · 消息内容\n\n${incomplete}共 ${payload.records.length} 条内容，导出 ${sections.length} 条内容、${imageCount} 张图片，跳过 ${skipped} 条空内容。\n\n${sections.join("\n\n---\n\n")}\n`;
@@ -107,7 +109,7 @@ export async function jsonToMarkdown(argv: string[]): Promise<void> {
   loadEnvironment();
   const options = readMarkdownOptions(argv);
   if (options.help) {
-    console.log("npm run json-to-markdown -- [--input <JSON路径>] [--output <Markdown路径>] [--assets-dir <图片目录>] [--image-width <像素>]\n默认读取扫描 JSON，生成同名 .md 和 .assets 图片目录；使用 TELEGRAM_MARKDOWN_* 配置路径和缩略图宽度。\n图片默认宽 120px，同一段内紧凑排列、自动换行，点击查看原图；需要阅读器支持内嵌 HTML。仅导出图文，不显示来源，不调用 Telegram、OCR 或模型。");
+    console.log("npm run json-to-markdown -- [--input <JSON路径>] [--output <Markdown路径>] [--assets-dir <图片目录>] [--image-width <像素>]\n默认读取扫描 JSON，生成同名 .md 和 .assets 图片目录；使用 TELEGRAM_MARKDOWN_* 配置路径和缩略图宽度。\n图片默认宽 120px，使用兼容 Zed 的独立 HTML 段落紧凑排列、自动换行，点击查看原图；阅读器需支持 HTML 块。仅导出图文，不显示来源，不调用 Telegram、OCR 或模型。");
     return;
   }
   const payload: unknown = JSON.parse(await readFile(options.input, "utf8"));

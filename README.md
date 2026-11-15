@@ -74,6 +74,7 @@ npm run clear-private-folder
 npm run clear-private-folder -- --dry-run
 npm run purge-deleted-users
 npm run scan -- --dry-run
+npm run message-stats
 npm run json-to-markdown
 npm run run
 ```
@@ -92,6 +93,7 @@ Command summary:
 - `clear-private-folder`: delete dialogs that belong only to the `私聊` folder. Dialogs that also belong to another custom folder are skipped. Pass `--dry-run` to preview, or `--no-dry-run` to execute even when `dry_run` is true in the config file. The same flags apply to the other mutating commands.
 - `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated
 - `scan`: collect and deduplicate folder content, export JSON, then stop; `scan-folder-weight` is a compatibility alias
+- `message-stats`: report the total history message count and individual channel counts for `TELEGRAM_SCAN_FOLDER`
 - `json-to-markdown`: convert exported JSON text and images to Markdown locally, rendering extracted image files without source metadata
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
@@ -148,6 +150,23 @@ npm run typecheck
 npm run test:weight-scan
 ```
 
+## Folder message counts
+
+```powershell
+npm run message-stats
+npm run message-stats -- --folder 小姐 --output weight-scan/message-stats.json
+```
+
+Defaults to `TELEGRAM_SCAN_FOLDER` and writes formatted JSON to `TELEGRAM_MESSAGE_STATS_OUTPUT`, or `<TELEGRAM_SCAN_OUTPUT>/message-stats.json` when unset. CLI `--folder` / `--output` override these settings. This is separate from `folder-stats`, which counts dialogs rather than messages.
+
+Each channel's count comes from Telegram's history total (`getHistory` with a single-message page); it is not inferred from message IDs or page length. The folder total is the sum of its channel totals, including videos and repeated messages. Album items count as individual messages, and service messages are included as reported by Telegram. The command ignores scan limits, date filters, deduplication and media filters. It only covers accessible history in the folder's channels, including pinned channels, and does not download media or call a model.
+
+Channels are queried separately, so results are not an atomic snapshot; `queriedAt` records each query time. On failure, that channel's `messageCount` and the overall `totalMessages` are `null`; `knownTotalMessages` sums only successful channels. The partial JSON is saved with `complete: false` and the command exits with an error. An empty folder produces a complete report with zero messages.
+
+```powershell
+npm run test:message-stats
+```
+
 ## JSON content to Markdown
 
 ```powershell
@@ -163,6 +182,8 @@ The default input follows `TELEGRAM_SCAN_OUTPUT` and `TELEGRAM_SCAN_EXPORT_FILE`
 The converter reads `records[].text` and `records[].images`, preserving order and line breaks. Source channel/date/links are omitted from Markdown and remain in the input JSON. Image-only records are retained; records without either text or images are skipped. Base64 images are decoded into a sibling `<Markdown filename>.assets/` directory. Each post's pictures share one paragraph as inline HTML thumbnails, wrapping to fit the available width. Thumbnails default to 120px wide and preserve aspect ratio without cropping; click one to open the full image. Set `TELEGRAM_MARKDOWN_IMAGE_WIDTH` or `--image-width` to change the width. The Markdown reader must support inline HTML images.
 
 Move or share the image directory together with the Markdown file. Configure the directory with `TELEGRAM_MARKDOWN_ASSETS_DIR` or `--assets-dir`; relative values are resolved against the Markdown output directory, and the image directory must be on the same drive as the Markdown file.
+
+For Zed compatibility, every image group is wrapped in a standalone `<p>` HTML block, with opening and closing tags on their own lines and no blank lines inside. Zed 1.28.1 parses HTML blocks separately from inline HTML; bare inline `<a><img></a>` markup can appear as text rather than images ([upstream issue](https://github.com/zed-industries/zed/issues/65751)). Keep the block wrapper when editing the generated file. Thumbnail width and image files are unchanged by this wrapper.
 
 Supported image MIME types: JPEG, PNG, WebP, GIF, BMP, AVIF and SVG. Optional source SHA-256 and byte-length fields are checked before writing; invalid images cause conversion to fail. Identical image bytes of the same MIME type share one asset file without changing message deduplication or removing image references. Old image files are retained when rerunning the conversion.
 
