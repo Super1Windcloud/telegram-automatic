@@ -1,0 +1,209 @@
+import { createHash } from "node:crypto";
+import { appendFile, mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { resolve, join } from "node:path";
+import type { Message, TelegramClient, tl } from "@mtcute/node";
+import { loadConfig } from "./config.js";
+import { collectDialogPeerKeysInCustomFolder } from "./folder-match.js";
+import { collectDialogsWithState, createTelegramClient, inputPeerKey, startTelegramClient, type CollectedDialog } from "./telegram.js";
+import { ANALYSIS_PROMPT, analyzeContent, decideWeight, parseAnalysis, type Analysis, type ImageInput, type WeightDecision } from "./weight-analysis.js";
+
+export type ScanOptions = { folder: string; limit: number; below: number; since?: Date; output: string; dryRun: boolean; help: boolean };
+
+export function readScanOptions(argv: string[]): ScanOptions {
+  const options: ScanOptions = { folder: "小姐", limit: 0, below: 95, output: resolve("weight-scan"), dryRun: false, help: false };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--") continue;
+    if (arg === "--dry-run" || arg === "--dry-run=true") { options.dryRun = true; continue; }
+    if (arg === "--no-dry-run" || arg === "--dry-run=false") { options.dryRun = false; continue; }
+    if (arg === "--help") { options.help = true; continue; }
+    if (!["--folder", "--limit", "--below", "--since", "--output"].includes(arg)) throw new Error(`未知扫描参数: ${arg}`);
+    const value = argv[++i];
+    if (!value?.trim() || value.startsWith("--")) throw new Error(`${arg} 缺少值。`);
+    switch (arg) {
+      case "--folder": options.folder = value.trim(); break;
+      case "--limit":
+        if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error("--limit 必须是非负整数，0 表示全部历史。");
+        options.limit = Number(value); break;
+      case "--below":
+        if (!/^\d+(?:\.\d+)?$/.test(value) || !Number.isFinite(Number(value)) || Number(value) <= 0) throw new Error("--below 必须是正数（斤）。");
+        options.below = Number(value); break;
+      case "--since": {
+        // Dates use UTC; timestamps must include a timezone to avoid machine-dependent ranges.
+        if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?$/.test(value)
+          || Number.isNaN(Date.parse(value)) || new Date(`${value.slice(0, 10)}T00:00:00Z`).toISOString().slice(0, 10) !== value.slice(0, 10)) {
+          throw new Error("--since 需要有效 ISO 日期或含时区时间，例如 2026-11-01 或 2026-11-01T00:00:00+08:00。");
+        }
+        options.since = new Date(value); break;
+      }
+      case "--output": options.output = resolve(value); break;
+    }
+  }
+  return options;
+}
+
+export function selectChannels(dialogs: CollectedDialog[], folders: tl.TypeDialogFilter[], title: string): CollectedDialog[] {
+  const matches = folders.filter((folder): folder is tl.RawDialogFilter | tl.RawDialogFilterChatlist =>
+    (folder._ === "dialogFilter" || folder._ === "dialogFilterChatlist") && folder.title.text === title);
+  if (matches.length !== 1) throw new Error(matches.length ? `存在多个同名文件夹“${title}”，请先重命名。` : `未找到文件夹“${title}”。`);
+  const keys = collectDialogPeerKeysInCustomFolder(dialogs, matches[0]);
+  return dialogs.filter((item) => item.info.entityKind === "channel" && keys.has(inputPeerKey(item.info.inputPeer)));
+}
+
+// Read one extra message at a boundary so a limit/date cutoff never splits an album.
+export async function* iterPosts(messages: AsyncIterable<Message>, options: Pick<ScanOptions, "limit" | "since">): AsyncGenerator<Message[]> {
+  let post: Message[] = [];
+  let count = 0;
+  for await (const message of messages) {
+    const sameAlbum = post.length > 0 && message.groupedIdUnique !== null && message.groupedIdUnique === post[0].groupedIdUnique;
+    if (post.length && !sameAlbum) { yield post; post = []; }
+    if (!sameAlbum && ((options.limit > 0 && count >= options.limit) || (options.since && message.date < options.since))) break;
+    count += 1;
+    if (message.isService) continue;
+    post.push(message);
+  }
+  if (post.length) yield post;
+}
+
+type ScanRecord = {
+  channelId: number; channelTitle: string; messageIds: number[]; links: string[]; date: string;
+  texts: Array<{ messageId: number; text: string }>; analysis?: Analysis; decision: WeightDecision;
+  unsupportedMedia: string[]; error?: string;
+};
+
+async function collectImages(client: TelegramClient, post: Message[]): Promise<ImageInput[]> {
+  const images: ImageInput[] = [];
+  let totalBytes = 0;
+  for (const message of post) {
+    const media = message.media;
+    if (!media || (media.type !== "photo" && !(media.type === "document" && media.mimeType.startsWith("image/")))) continue;
+    const mime = media.type === "photo" ? "image/jpeg" : media.mimeType;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) throw new Error(`图片 ${message.id} 不支持 ${mime}，请人工核对。`);
+    if (media.fileSize !== undefined && media.fileSize > 15 * 1024 * 1024) throw new Error(`图片 ${message.id} 超过 15 MiB。`);
+    const bytes = await client.downloadAsBuffer(media);
+    totalBytes += bytes.byteLength;
+    if (bytes.byteLength > 15 * 1024 * 1024 || totalBytes > 40 * 1024 * 1024) throw new Error("单图或相册超过图片大小限制。");
+    images.push({ messageId: message.id, dataUrl: `data:${mime};base64,${Buffer.from(bytes).toString("base64")}` });
+  }
+  return images;
+}
+
+async function atomicJson(path: string, value: unknown): Promise<void> {
+  const temporary = `${path}.${process.pid}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  await rename(temporary, path);
+}
+
+function errorMessage(error: unknown): string { return error instanceof Error ? error.message : String(error); }
+
+function markdownRecord(record: ScanRecord): string {
+  const quote = (value: string) => value.split(/\r?\n/).map((line) => `> ${line}`).join("\n");
+  return `\n## ${record.channelTitle.replace(/[\r\n]/g, " ")} / ${record.messageIds.join(", ")}\n\n`
+    + `时间：${record.date}\n\n来源：${record.links.join(" ")}\n\n体重：${record.decision.weights.map((item) => `${item.jin} 斤`).join(" / ")}\n\n`
+    + `摘要：\n${quote(record.analysis?.summary ?? "")}\n\n原文：\n${quote(record.texts.map((item) => `[${item.messageId}] ${item.text}`).join("\n"))}\n\n`
+    + `OCR：\n${quote(record.analysis?.ocr.map((item) => `[${item.messageId}] ${item.text}`).join("\n") ?? "")}\n`;
+}
+
+export async function scanFolderWeight(argv: string[]): Promise<void> {
+  const options = readScanOptions(argv);
+  if (options.help) {
+    console.log("npm run scan-folder-weight -- [--folder 小姐] [--limit 0] [--below 95] [--since 2026-11-01] [--output weight-scan] [--dry-run]\n--limit 为每频道消息数，0=全部可访问历史；同一相册总是完整读取。--dry-run 只列频道，不读取消息或调用模型。\n文字及图片会提交至配置的模型接口；需要支持图片输入的模型。结果保存在本地，不修改 Telegram 数据。");
+    return;
+  }
+  const config = await loadConfig();
+  if (!options.dryRun && !config.openai.apiKey) throw new Error("缺少 openai.api_key 或 OPENAI_API_KEY。");
+  const client = createTelegramClient(config);
+  try {
+    await startTelegramClient(client, config);
+    const folders = (await client.getFolders()).filters;
+    const channels = selectChannels(await collectDialogsWithState(client), folders, options.folder);
+    console.log(`文件夹“${options.folder}”：${channels.length} 个频道；每频道 ${options.limit || "全部"} 条消息；体重 < ${options.below} 斤。`);
+    for (const channel of channels) console.log(`  ${channel.info.title} (${channel.info.id})`);
+    if (options.dryRun) return;
+    if (!channels.length) throw new Error("文件夹中没有可访问的频道。群聊和机器人不在扫描范围内。");
+    await runScan(client, channels, config.openai, options);
+  } finally {
+    await client.destroy();
+  }
+}
+
+export async function runScan(
+  client: TelegramClient, channels: CollectedDialog[], api: Awaited<ReturnType<typeof loadConfig>>["openai"], options: ScanOptions,
+): Promise<void> {
+  await mkdir(options.output, { recursive: true });
+  const lockPath = join(options.output, ".scan.lock");
+  const lock = await open(lockPath, "wx").catch(() => { throw new Error(`无法锁定输出目录；检查是否有扫描正在运行或遗留 .scan.lock：${options.output}`); });
+  const stats = { startedAt: new Date().toISOString(), finishedAt: "", complete: false,
+    folder: options.folder, belowJin: options.below, limitPerChannel: options.limit, since: options.since?.toISOString(),
+    channels: channels.length, channelsCompleted: 0, messages: 0, posts: 0, matched: 0, excluded: 0, review: 0, unknown: 0, cached: 0,
+    errors: [] as Array<{ channelId: number; messageIds?: number[]; error: string }> };
+  const output = (name: string) => join(options.output, name);
+  try {
+    await lock.writeFile(JSON.stringify({ pid: process.pid, startedAt: stats.startedAt }));
+    await mkdir(output("cache"), { recursive: true });
+    for (const name of ["analysis.jsonl", "matches.jsonl", "review.jsonl"]) await writeFile(output(name), "", "utf8");
+    await writeFile(output("matches.md"), `# ${options.folder}：体重低于 ${options.below} 斤的消息\n\n筛选依据为消息原文和图片 OCR；识别结果需要结合来源核对。\n`, "utf8");
+    await atomicJson(output("summary.json"), stats);
+    for (const channel of channels) {
+      try {
+        for await (const post of iterPosts(client.iterHistory(channel.info.inputPeer), options)) {
+          post.sort((a, b) => a.id - b.id);
+          stats.posts += 1;
+          stats.messages += post.length;
+          const texts = post.filter((message) => message.text.trim()).map((message) => ({ messageId: message.id, text: message.text }));
+          const record: ScanRecord = { channelId: channel.info.id, channelTitle: channel.info.title,
+            messageIds: post.map((message) => message.id), links: post.map((message) => message.link), date: post[0].date.toISOString(), texts,
+            decision: { status: "unknown", weights: [], reason: "未分析" },
+            unsupportedMedia: post.map((message) => message.media).filter((media) => media && media.type !== "photo"
+              && !(media.type === "document" && media.mimeType.startsWith("image/"))).map((media) => media!.type) };
+          const hash = createHash("sha256").update(JSON.stringify({ version: 1, prompt: ANALYSIS_PROMPT, channel: channel.info.id,
+            messages: post.map((message) => ({ id: message.id, text: message.text,
+              media: message.media?.type === "photo" || message.media?.type === "document" ? message.media.uniqueFileId : message.media?.type })),
+            model: api.model, baseUrl: api.baseUrl, apiStyle: api.apiStyle })).digest("hex");
+          const cachePath = output(`cache/${hash}.json`);
+          const imageIds = post.filter((message) => message.media?.type === "photo" || (message.media?.type === "document" && message.media.mimeType.startsWith("image/"))).map((message) => message.id);
+          try {
+            const cached = await readFile(cachePath, "utf8").catch((error: NodeJS.ErrnoException) => { if (error.code === "ENOENT") return null; throw error; });
+            if (cached !== null) {
+              // Cached model output uses the same validation as a fresh response.
+              record.analysis = parseAnalysis(cached, imageIds);
+              stats.cached += 1;
+            } else if (texts.length || imageIds.length) {
+              record.analysis = await analyzeContent(api, texts, await collectImages(client, post));
+              await atomicJson(cachePath, record.analysis);
+            } else {
+              record.analysis = { summary: "无文字或可识别静态图片，未分析视频、音频和其他媒体。", ocr: [] };
+            }
+            record.decision = decideWeight(texts, record.analysis.ocr, options.below);
+          } catch (error) {
+            record.error = errorMessage(error);
+            record.decision = { status: "review", weights: [], reason: "下载、OCR 或摘要失败，不能视为已完成筛选。" };
+            stats.errors.push({ channelId: channel.info.id, messageIds: record.messageIds, error: record.error });
+          }
+          stats[record.decision.status] += 1;
+          const line = `${JSON.stringify(record)}\n`;
+          await appendFile(output("analysis.jsonl"), line, "utf8");
+          if (record.decision.status === "matched") {
+            await appendFile(output("matches.jsonl"), line, "utf8");
+            await appendFile(output("matches.md"), markdownRecord(record), "utf8");
+          }
+          if (record.decision.status === "review") await appendFile(output("review.jsonl"), line, "utf8");
+          console.log(`[${channel.info.title}] ${post[0].id}: ${record.decision.status}${record.error ? ` (${record.error})` : ""}；已处理 ${stats.posts} 条内容，命中 ${stats.matched} 条。`);
+          await atomicJson(output("summary.json"), stats);
+        }
+        stats.channelsCompleted += 1;
+      } catch (error) {
+        stats.errors.push({ channelId: channel.info.id, error: errorMessage(error) });
+        console.error(`[频道失败] ${channel.info.title}: ${errorMessage(error)}`);
+      }
+    }
+    stats.complete = stats.errors.length === 0;
+  } finally {
+    stats.finishedAt = new Date().toISOString();
+    try { await atomicJson(output("summary.json"), stats); }
+    finally { await lock.close(); await unlink(lockPath); }
+  }
+  console.log(`输出：${options.output}；命中 ${stats.matched}，待核对 ${stats.review}，失败 ${stats.errors.length}。`);
+  if (!stats.complete) throw new Error("扫描存在失败或未读完的频道；已保存部分结果。重跑相同命令会复用成功缓存并重试失败项。");
+}
+
