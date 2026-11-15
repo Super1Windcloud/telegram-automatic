@@ -46,7 +46,7 @@ TELEGRAM_SCAN_DOWNLOAD_TIMEOUT_MS=60000
 - 仅采集文件夹中的频道，不扫描群聊/机器人，不跟随其他频道链接，不修改 Telegram 数据。已删除、无权限或隐藏的历史无法读取。每次运行重新读取历史和下载保留图片，不复用之前的模型缓存。
 - 写入完成后用临时文件原子替换目标文件，扫描期间有相邻的 `.json.lock` 锁。异常中断后应确认进程已停止再删除旧锁；残留临时文件不代表完整 JSON。
 
-## JSON 文字转换为 Markdown
+## JSON 图文转换为 Markdown
 
 ```powershell
 # 默认读取扫描结果，在同目录生成同名 .md 文件
@@ -58,7 +58,13 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 
 默认输入继承 `TELEGRAM_SCAN_OUTPUT` 和 `TELEGRAM_SCAN_EXPORT_FILE`，默认输出将输入扩展名改为 `.md`。也可以在 `.env` 中设置 `TELEGRAM_MARKDOWN_INPUT` 和 `TELEGRAM_MARKDOWN_OUTPUT`，命令行 `--input` / `--output` 优先。
 
-仅转换 `records[].text`，保持内容顺序和原文换行，保留所有来源频道、时间及链接；空文字条目跳过，图片及 Base64 不嵌入 Markdown。原始 JSON 的 `complete` 为 false 时会在文档中注明采集未完成。输入必须包含带字符串 `text` 字段的 `records` 数组，输出路径不能覆盖输入 JSON。
+转换 `records[].text` 和 `records[].images`，保持内容顺序和原文换行；Markdown 不显示来源频道、时间或链接，来源仍保留在输入 JSON 中。Base64 图片会解码到 Markdown 旁的同名 `.assets/` 目录，再通过相对路径 `![图片](...)` 渲染。纯图片条目也会保留，只有既无文字又无图片的条目才跳过。移动或分享 Markdown 时，需要同时携带图片目录。
+
+图片目录可通过 `.env` 的 `TELEGRAM_MARKDOWN_ASSETS_DIR` 或 `--assets-dir` 指定；相对目录以 Markdown 所在目录为基准，图片和 Markdown 必须位于同一驱动器。例如默认生成 `weight-scan/folder-content.md` 和 `weight-scan/folder-content.assets/`。
+
+支持 JPEG、PNG、WebP、GIF、BMP、AVIF、SVG。会校验 Base64 及原始 JSON 中可选的 SHA-256、字节数；图片数据损坏时转换报错。同类型、同内容的图片复用一个文件，但不会合并消息或减少图片引用；重跑不会删除旧图片文件。
+
+原始 JSON 的 `complete` 为 false 时会在文档中注明采集未完成。输入必须包含带字符串 `text` 字段的 `records` 数组，输出路径不能覆盖输入 JSON。
 
 转换完全离线，不重新采集、不调用 Telegram、OCR 或模型，也不做体重筛选。
 
