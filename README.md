@@ -94,7 +94,7 @@ Command summary:
 - `purge-deleted-users`: delete dialogs for accounts that are already deleted or deactivated
 - `scan`: collect and deduplicate folder content, export JSON, then stop; `scan-folder-weight` is a compatibility alias
 - `message-stats`: report the total history message count and individual channel counts for `TELEGRAM_SCAN_FOLDER`
-- `json-to-markdown`: convert exported JSON text and images to Markdown locally, rendering extracted image files without source metadata
+- `json-to-markdown`: convert exported JSON text and images to Markdown locally, rendering extracted image files with publication dates and without source links
 - `run`: execute the full workflow; skips reclassification if a classified file already exists
 
 `npm run sync-folders` is kept as an alias for `npm run run`.
@@ -179,13 +179,15 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 
 The default input follows `TELEGRAM_SCAN_OUTPUT` and `TELEGRAM_SCAN_EXPORT_FILE`; the default output replaces the input extension with `.md`. Optional `.env` settings `TELEGRAM_MARKDOWN_INPUT` and `TELEGRAM_MARKDOWN_OUTPUT` override those paths, and CLI `--input` / `--output` take precedence.
 
-The converter reads `records[].text` and `records[].images`, preserving order and line breaks. Source channel/date/links are omitted from Markdown and remain in the input JSON. Image-bearing records are retained by default, including image-only records; text-only records are skipped unless explicitly enabled. Base64 images are decoded into a sibling `<Markdown filename>.assets/` directory. Each post's pictures share one HTML paragraph block, wrapping to fit the available width. Thumbnails default to 120px wide and preserve aspect ratio without cropping; click one to open the full image. Set `TELEGRAM_MARKDOWN_IMAGE_WIDTH` or `--image-width` to change the width. The Markdown reader must support HTML image blocks.
+The converter reads `records[].text` and `records[].images`, preserving order and line breaks. Source channel names and links are omitted from Markdown and remain in the input JSON; publication dates are shown separately for each retained post. Image-bearing records are retained by default, including image-only records; text-only records are skipped unless explicitly enabled. Base64 images are decoded into a sibling `<Markdown filename>.assets/` directory. Each post's pictures share one HTML paragraph block, wrapping to fit the available width. Thumbnails default to 120px wide and preserve aspect ratio without cropping; click one to open the full image. Set `TELEGRAM_MARKDOWN_IMAGE_WIDTH` or `--image-width` to change the width. The Markdown reader must support HTML image blocks.
 
 Move or share the image directory together with the Markdown file. Configure the directory with `TELEGRAM_MARKDOWN_ASSETS_DIR` or `--assets-dir`; relative values are resolved against the Markdown output directory, and the image directory must be on the same drive as the Markdown file.
 
 For Zed compatibility, every image group is wrapped in a standalone `<p>` HTML block, with opening and closing tags on their own lines and no blank lines inside. Zed 1.28.1 parses HTML blocks separately from inline HTML; bare inline `<a><img></a>` markup can appear as text rather than images ([upstream issue](https://github.com/zed-industries/zed/issues/65751)). Keep the block wrapper when editing the generated file. Thumbnail width and image files are unchanged by this wrapper.
 
 Markdown export defaults to image-bearing records only (`TELEGRAM_MARKDOWN_REQUIRE_IMAGES=true`); text-only records are skipped and section numbers remain consecutive. Use `TELEGRAM_MARKDOWN_REQUIRE_IMAGES=false` or `--include-text-only` to retain text-only records, or `--images-only` to enforce the filter. This filter does not modify the input JSON.
+
+Every exported record includes a publication date from `sources[0].date`, matching the retained post and its images. Dates use `Asia/Shanghai` by default; configure `TELEGRAM_MARKDOWN_TIMEZONE` or `--timezone` to change the display timezone. Duplicate repost dates do not replace the retained source date. Missing or invalid dates are shown as unknown. Source channel names and links remain hidden.
 
 Supported image MIME types: JPEG, PNG, WebP, GIF, BMP, AVIF and SVG. Optional source SHA-256 and byte-length fields are checked before writing; invalid images cause conversion to fail. Identical image bytes of the same MIME type share one asset file without changing message deduplication or removing image references. Old image files are retained when rerunning the conversion.
 

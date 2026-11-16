@@ -74,7 +74,7 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 
 默认输入继承 `TELEGRAM_SCAN_OUTPUT` 和 `TELEGRAM_SCAN_EXPORT_FILE`，默认输出将输入扩展名改为 `.md`。也可以在 `.env` 中设置 `TELEGRAM_MARKDOWN_INPUT` 和 `TELEGRAM_MARKDOWN_OUTPUT`，命令行 `--input` / `--output` 优先。
 
-转换 `records[].text` 和 `records[].images`，保持内容顺序和原文换行；Markdown 不显示来源频道、时间或链接，来源仍保留在输入 JSON 中。Base64 图片会解码到 Markdown 旁的同名 `.assets/` 目录。同一条内容中的图片在一个段落内并排排列，空间不足时自动换行，默认宽 120px，保持比例、不裁剪，点击缩略图可查看原图。此排版需要 Markdown 阅读器支持内嵌 HTML 图片。
+转换 `records[].text` 和 `records[].images`，保持内容顺序和原文换行；Markdown 不显示来源频道名称和链接，发布日期单独标注，完整来源仍保留在输入 JSON 中。Base64 图片会解码到 Markdown 旁的同名 `.assets/` 目录。同一条内容中的图片在一个段落内并排排列，空间不足时自动换行，默认宽 120px，保持比例、不裁剪，点击缩略图可查看原图。此排版需要 Markdown 阅读器支持内嵌 HTML 图片。
 
 缩略图宽度可在 `.env` 中设置 `TELEGRAM_MARKDOWN_IMAGE_WIDTH=120`，或通过 `--image-width 96` 临时覆盖。纯图片条目也会保留，默认跳过没有图片的条目。移动或分享 Markdown 时，需要同时携带图片目录。
 
@@ -85,6 +85,8 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 支持 JPEG、PNG、WebP、GIF、BMP、AVIF、SVG。会校验 Base64 及原始 JSON 中可选的 SHA-256、字节数；图片数据损坏时转换报错。同类型、同内容的图片复用一个文件，但不会合并消息或减少图片引用；重跑不会删除旧图片文件。
 
 默认启用 `TELEGRAM_MARKDOWN_REQUIRE_IMAGES=true`，Markdown 只保留带图片的内容，过滤纯文字条目并重新连续编号；不会修改输入 JSON。设置为 `false` 或使用 `--include-text-only` 可保留纯文字，`--images-only` 可强制启用图片筛选。
+
+每条图文显示“发布日期”，取 `sources[0].date`，对应保留的那份原消息和图片，不混用其他重复转载的日期。默认按 `Asia/Shanghai` 显示，可用 `TELEGRAM_MARKDOWN_TIMEZONE` 或 `--timezone` 调整。缺失或无效的日期标为“未知”，来源频道名称和链接不显示。
 
 原始 JSON 的 `complete` 为 false 时会在文档中注明采集未完成。输入必须包含带字符串 `text` 字段的 `records` 数组，输出路径不能覆盖输入 JSON。
 

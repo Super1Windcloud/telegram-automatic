@@ -88,6 +88,18 @@ test("mixed albums combine text and keep static images, including image document
   } finally { await clean(directory); }
 });
 
+test("nearly identical full text with different weights is never merged", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "telegram-collect-test-"));
+  const shared = "共同说明".repeat(100);
+  const client = { iterHistory: () => history([message(2, `${shared}体重90斤`), message(1, `${shared}体重95斤`)]) } as unknown as TelegramClient;
+  try {
+    await exportFolderContents(client, [channel(1)], { ...readExportOptions([], { TELEGRAM_SCAN_FOLDER: "test" }), exportFile: join(directory, "result.json") });
+    const report = JSON.parse(await readFile(join(directory, "result.json"), "utf8"));
+    assert.equal(report.records.length, 2, "more than 99% similar text still must not merge when a weight differs");
+    assert.equal(report.stats.duplicatesRemoved, 0);
+  } finally { await clean(directory); }
+});
+
 test("bounded image downloads and channel failures produce valid incomplete JSON", async () => {
   const directory = await mkdtemp(join(tmpdir(), "telegram-collect-test-"));
   let chunks = 0;

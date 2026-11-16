@@ -7,7 +7,7 @@ import { readMarkdownOptions, renderContentMarkdown, writeContentMarkdown } from
 
 const image = { mimeType: "image/gif", base64: "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" };
 
-test("text and image-only posts render images without source metadata or inline Base64", () => {
+test("text and image-only posts render images without source links or inline Base64", () => {
   const result = renderContentMarkdown({ folder: "测试", complete: true, records: [
     { text: "原文第一行\r\n体重90斤\n\n末行", sources: [
       { channelTitle: "频道A", date: "2026-11-15T00:00:00Z", links: ["https://t.me/test/1"] },
@@ -49,6 +49,10 @@ test("input defaults follow scan output; environment and CLI paths override defa
   assert.equal(defaults.assetsDirectory, resolve("custom/export.assets"));
   assert.equal(defaults.imageWidth, 120);
   assert.equal(defaults.requireImages, true);
+  assert.equal(defaults.timeZone, "Asia/Shanghai");
+  assert.equal(readMarkdownOptions([], { TELEGRAM_MARKDOWN_TIMEZONE: "UTC" }).timeZone, "UTC");
+  assert.equal(readMarkdownOptions(["--timezone", "Asia/Tokyo"], { TELEGRAM_MARKDOWN_TIMEZONE: "UTC" }).timeZone, "Asia/Tokyo");
+  assert.throws(() => readMarkdownOptions([], { TELEGRAM_MARKDOWN_TIMEZONE: "not-a-timezone" }));
   assert.equal(readMarkdownOptions([], { TELEGRAM_MARKDOWN_REQUIRE_IMAGES: "false" }).requireImages, false);
   assert.equal(readMarkdownOptions(["--images-only"], { TELEGRAM_MARKDOWN_REQUIRE_IMAGES: "false" }).requireImages, true);
   assert.equal(readMarkdownOptions(["--include-text-only"], {}).requireImages, false);
@@ -67,6 +71,19 @@ test("input defaults follow scan output; environment and CLI paths override defa
   assert.throws(() => readMarkdownOptions(["--output", "out.txt"], {}));
   assert.throws(() => readMarkdownOptions(["--input"], {}));
   assert.throws(() => readMarkdownOptions(["--unknown"], {}));
+});
+
+test("publication dates use the retained source and configured timezone, including day boundaries", () => {
+  const payload = { records: [{ text: "有日期", images: [image], sources: [
+    { date: "2026-11-15T16:30:00Z" }, { date: "2025-01-01T00:00:00Z" },
+  ] }, { text: "缺日期", images: [image] }, { text: "无效日期", images: [image], sources: [{ date: "invalid" }] }] };
+  const local = renderContentMarkdown(payload);
+  assert.ok(local.markdown.includes("发布日期：2026-11-16 00:30:00（Asia/Shanghai）"));
+  assert.equal(local.markdown.includes("2025-01-01"), false);
+  assert.equal((local.markdown.match(/^发布日期：/gm) ?? []).length, 3);
+  assert.equal((local.markdown.match(/^发布日期：未知$/gm) ?? []).length, 2);
+  const utc = renderContentMarkdown(payload, "images", 120, true, "UTC");
+  assert.ok(utc.markdown.includes("发布日期：2026-11-15 16:30:00（UTC）"));
 });
 
 test("image filtering drops text-only records, keeps image-only records and renumbers sections", () => {
