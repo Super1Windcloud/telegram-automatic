@@ -88,6 +88,8 @@ npm run json-to-markdown -- --input weight-scan/folder-content.json --output wei
 
 每条图文显示“发布日期”，取 `sources[0].date`，对应保留的那份原消息和图片，不混用其他重复转载的日期。默认按 `Asia/Shanghai` 显示，可用 `TELEGRAM_MARKDOWN_TIMEZONE` 或 `--timezone` 调整。缺失或无效的日期标为“未知”，来源频道名称和链接不显示。
 
+默认按发布日期从早到晚排列，无日期内容放在末尾；可用 `TELEGRAM_MARKDOWN_SORT_ORDER` 或 `--sort-order` 选择 `asc`（正序）、`desc`（倒序）或 `source`（JSON 原始顺序）。排序时图文整体移动，同日期保持原顺序，不修改 JSON 和原始时间。顶部标注快照采集完成时间；文件为离线归档，可能保留后来在 Telegram 中已不可见的图文，其最早日期可以早于当前频道可访问历史。
+
 原始 JSON 的 `complete` 为 false 时会在文档中注明采集未完成。输入必须包含带字符串 `text` 字段的 `records` 数组，输出路径不能覆盖输入 JSON。
 
 转换完全离线，不重新采集、不调用 Telegram、OCR 或模型，也不做体重筛选。

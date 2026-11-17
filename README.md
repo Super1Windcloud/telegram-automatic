@@ -189,6 +189,8 @@ Markdown export defaults to image-bearing records only (`TELEGRAM_MARKDOWN_REQUI
 
 Every exported record includes a publication date from `sources[0].date`, matching the retained post and its images. Dates use `Asia/Shanghai` by default; configure `TELEGRAM_MARKDOWN_TIMEZONE` or `--timezone` to change the display timezone. Duplicate repost dates do not replace the retained source date. Missing or invalid dates are shown as unknown. Source channel names and links remain hidden.
 
+Markdown defaults to oldest-first publication order, with unknown dates last. Set `TELEGRAM_MARKDOWN_SORT_ORDER` or `--sort-order` to `asc`, `desc`, or `source` to choose chronological, reverse chronological, or original JSON order. Sorting moves complete posts with their images, preserves equal-date order, and does not modify JSON or timestamps. The header shows the snapshot collection completion time. This is an offline archive: it may retain posts that have since disappeared from Telegram, so its earliest post can predate the channel's currently accessible history.
+
 Supported image MIME types: JPEG, PNG, WebP, GIF, BMP, AVIF and SVG. Optional source SHA-256 and byte-length fields are checked before writing; invalid images cause conversion to fail. Identical image bytes of the same MIME type share one asset file without changing message deduplication or removing image references. Old image files are retained when rerunning the conversion.
 
 An incomplete source export is labelled as such in the Markdown. Input must contain a `records` array with string `text` fields; output cannot overwrite the input JSON. Conversion is entirely local and does not run Telegram collection, OCR, summaries or weight filtering.

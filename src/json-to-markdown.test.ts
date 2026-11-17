@@ -50,6 +50,10 @@ test("input defaults follow scan output; environment and CLI paths override defa
   assert.equal(defaults.imageWidth, 120);
   assert.equal(defaults.requireImages, true);
   assert.equal(defaults.timeZone, "Asia/Shanghai");
+  assert.equal(defaults.sortOrder, "asc");
+  assert.equal(readMarkdownOptions([], { TELEGRAM_MARKDOWN_SORT_ORDER: "desc" }).sortOrder, "desc");
+  assert.equal(readMarkdownOptions(["--sort-order", "source"], { TELEGRAM_MARKDOWN_SORT_ORDER: "desc" }).sortOrder, "source");
+  assert.throws(() => readMarkdownOptions([], { TELEGRAM_MARKDOWN_SORT_ORDER: "random" }));
   assert.equal(readMarkdownOptions([], { TELEGRAM_MARKDOWN_TIMEZONE: "UTC" }).timeZone, "UTC");
   assert.equal(readMarkdownOptions(["--timezone", "Asia/Tokyo"], { TELEGRAM_MARKDOWN_TIMEZONE: "UTC" }).timeZone, "Asia/Tokyo");
   assert.throws(() => readMarkdownOptions([], { TELEGRAM_MARKDOWN_TIMEZONE: "not-a-timezone" }));
@@ -71,6 +75,23 @@ test("input defaults follow scan output; environment and CLI paths override defa
   assert.throws(() => readMarkdownOptions(["--output", "out.txt"], {}));
   assert.throws(() => readMarkdownOptions(["--input"], {}));
   assert.throws(() => readMarkdownOptions(["--unknown"], {}));
+});
+
+test("publication sorting keeps text and images together, puts unknown dates last and preserves JSON order", () => {
+  const payload = { finishedAt: "2026-11-15T15:25:21Z", records: [
+    { text: "晚", images: [image], sources: [{ date: "2026-11-15T13:55:18Z" }] },
+    { text: "未知", images: [image] },
+    { text: "早", images: [image, image], sources: [{ date: "2026-11-09T04:26:56Z" }] },
+    { text: "同日", images: [image], sources: [{ date: "2026-11-09T04:26:56Z" }] },
+  ] };
+  const texts = (markdown: string) => [...markdown.matchAll(/^> (.+)  $/gm)].map((match) => match[1]);
+  const asc = renderContentMarkdown(payload);
+  assert.deepEqual(texts(asc.markdown), ["早", "同日", "晚", "未知"]);
+  assert.ok(asc.markdown.includes("快照采集完成：2026-11-15 23:25:21（Asia/Shanghai）"));
+  assert.deepEqual([...asc.markdown.matchAll(/^<p>\n([\s\S]*?)\n<\/p>$/gm)].map((match) => (match[1].match(/<img /g) ?? []).length), [2, 1, 1, 1]);
+  assert.deepEqual(texts(renderContentMarkdown(payload, "images", 120, true, "Asia/Shanghai", "desc").markdown), ["晚", "早", "同日", "未知"]);
+  assert.deepEqual(texts(renderContentMarkdown(payload, "images", 120, true, "Asia/Shanghai", "source").markdown), ["晚", "未知", "早", "同日"]);
+  assert.deepEqual(payload.records.map((row) => row.text), ["晚", "未知", "早", "同日"]);
 });
 
 test("publication dates use the retained source and configured timezone, including day boundaries", () => {
